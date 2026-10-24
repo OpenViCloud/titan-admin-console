@@ -22,6 +22,7 @@ const SAME_IN_BOTH: Record<string, string> = {
   GB: 'unit',
   'incus config trust add-certificate titan.crt': 'the command an operator types on the cluster',
   'https://host:8443': 'an example address',
+  'https://account.r2.cloudflarestorage.com': 'an example address',
 }
 
 // Every component file. Skipped: shadcn primitives (no copy of their own), test helpers.
