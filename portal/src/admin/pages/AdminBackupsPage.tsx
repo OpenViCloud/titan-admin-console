@@ -19,6 +19,7 @@ import { useT, useFormat } from '@/i18n/LanguageContext'
 import type { Messages } from '@/i18n/en'
 import { ageOf } from '@/lib/age'
 import { formatBytes } from '@/lib/bytes'
+import { needsAttention, visibleItems } from '@/lib/backupFilter'
 
 // Where the restore steps live. The page only points at them: restoring runs outside the console.
 const RUNBOOK_URL = 'https://github.com/OpenViCloud/titan-ops/blob/main/docs/infra/oci/runbook.md'
@@ -30,9 +31,9 @@ export function AdminBackupsPage() {
   const [onlyAttention, setOnlyAttention] = useState(false)
 
   const items = data === undefined ? [] : data.items
-  const needAttention = items.filter(i => i.health === 'Stale' || i.health === 'Missing')
-  const unreadable = items.some(i => i.health === 'Unknown')
-  const shown = onlyAttention ? needAttention : items
+  const needAttention = items.filter(needsAttention)
+  const unknownItems = items.filter(i => i.health === 'Unknown')
+  const shown = visibleItems(items, onlyAttention)
   const postgres = items.find(i => i.kind === 'postgres')
 
   return (
@@ -44,9 +45,9 @@ export function AdminBackupsPage() {
         {isLoading && <p className="text-sm text-muted-foreground">{t.common.loading}</p>}
         {isError && <p className="text-sm text-bad">{t.adminBackups.loadFailed}</p>}
 
-        {unreadable && (
+        {unknownItems.length > 0 && (
           <p role="status" className="rounded-lg border border-border bg-muted p-3 text-sm text-soft-foreground">
-            {t.adminBackups.unreadableNotice}
+            {unknownItems.some(i => i.reason === 'BucketUnreadable') ? t.adminBackups.unreadableNotice : t.adminBackups.staleReadingNotice}
           </p>
         )}
 
@@ -57,7 +58,6 @@ export function AdminBackupsPage() {
               type="button"
               variant="secondary"
               className="ml-auto"
-              aria-pressed={onlyAttention}
               onClick={() => setOnlyAttention(!onlyAttention)}
             >
               {onlyAttention ? t.adminBackups.showAll : t.adminBackups.showThem}
@@ -86,11 +86,15 @@ export function AdminBackupsPage() {
   )
 }
 
-function agoText(iso: string | null, t: Messages): string {
+// Nothing known is not the same as nothing there: an item whose state is Unknown says so instead of "none yet".
+function agoText(iso: string | null, health: BackupHealth, t: Messages): string {
   if (iso === null) {
-    return t.adminBackups.nothingYet
+    return health === 'Unknown' ? t.adminBackups.unknownValue : t.adminBackups.nothingYet
   }
   const age = ageOf(iso, new Date())
+  if (age === null) {
+    return t.adminBackups.unknownValue
+  }
   if (age.unit === 'minutes') {
     return t.adminBackups.minutesAgo(age.count)
   }
@@ -106,12 +110,12 @@ function PostgresCards({ item }: { item: BackupItem }) {
     <div className="grid gap-4 sm:grid-cols-2">
       <section aria-label={t.adminBackups.cardLastLog} className="rounded-lg border border-border p-4">
         <h2 className="text-xs text-muted-foreground">{t.adminBackups.cardLastLog}</h2>
-        <p className="text-base font-medium text-foreground">{agoText(item.lastWalAt, t)}</p>
+        <p className="text-base font-medium text-foreground">{agoText(item.lastWalAt, item.health, t)}</p>
         <p className="text-xs text-muted-foreground mt-1">{t.adminBackups.cardLastLogHint}</p>
       </section>
       <section aria-label={t.adminBackups.cardNewestBase} className="rounded-lg border border-border p-4">
         <h2 className="text-xs text-muted-foreground">{t.adminBackups.cardNewestBase}</h2>
-        <p className="text-base font-medium text-foreground">{agoText(item.takenAt, t)}</p>
+        <p className="text-base font-medium text-foreground">{agoText(item.takenAt, item.health, t)}</p>
       </section>
     </div>
   )
@@ -162,7 +166,8 @@ function BackupTable({ items }: { items: BackupItem[] }) {
               <TableCell>{i.takenAt === null ? '—' : f.dateTime(i.takenAt)}</TableCell>
               <TableCell>{i.sizeBytes === null ? '—' : formatBytes(i.sizeBytes)}</TableCell>
               <TableCell>
-                <Badge variant={healthVariant(i.health)}>{t.adminBackups.healthLabels[i.health] ?? i.health}</Badge>
+                {/* The state word is the server's own, in both languages, like every other status in the console. */}
+                <Badge variant={healthVariant(i.health)}>{i.health}</Badge>
                 {i.reason !== null && (
                   <span className="ml-2 text-xs text-muted-foreground">{t.adminBackups.reasons[i.reason] ?? i.reason}</span>
                 )}
@@ -194,12 +199,13 @@ function errorMessage(err: unknown, fallback: string): string {
 
 function BackupTargetBlock() {
   const t = useT()
-  const { data: target, isLoading } = useBackupTarget()
+  const { data: target, isLoading, isError } = useBackupTarget()
 
   return (
     <section aria-labelledby="backup-target" className="rounded-lg border border-border p-4 space-y-3">
       <h2 id="backup-target" className="text-sm font-medium text-foreground">{t.adminBackups.targetTitle}</h2>
       {isLoading && <p className="text-xs text-muted-foreground">{t.common.loading}</p>}
+      {isError && <p className="text-xs text-bad">{t.adminBackups.targetLoadFailed}</p>}
       {/* The key changes with the saved row, so a save remounts the form with what was read back. */}
       {target !== undefined && <BackupTargetForm key={target === null ? 'none' : target.updatedAt} target={target} />}
     </section>
@@ -221,12 +227,17 @@ function BackupTargetForm({ target }: { target: BackupTarget | null }) {
 
   const isSaved = target !== null
   const hasSecretOrKeepsOne = secretAccessKey !== '' || isSaved
-  const canSave = !save.isPending && endpoint !== '' && region !== '' && bucket !== '' && accessKeyId !== '' && hasSecretOrKeepsOne
+  const isFilled = endpoint.trim() !== '' && region.trim() !== '' && bucket.trim() !== '' && accessKeyId.trim() !== ''
+  // A saved target changes nothing (and writes no audit row) until a field or the secret differs from what is stored.
+  const isChanged = target === null
+    || endpoint.trim() !== target.endpoint || region.trim() !== target.region
+    || bucket.trim() !== target.bucket || accessKeyId.trim() !== target.accessKeyId || secretAccessKey !== ''
+  const canSave = !save.isPending && isFilled && hasSecretOrKeepsOne && isChanged
 
   function submit(e: React.FormEvent) {
     e.preventDefault()
     setFormError(null)
-    const body = { endpoint, region, bucket, accessKeyId }
+    const body = { endpoint: endpoint.trim(), region: region.trim(), bucket: bucket.trim(), accessKeyId: accessKeyId.trim() }
     save.mutate(secretAccessKey === '' ? body : { ...body, secretAccessKey }, {
       onSuccess: () => toast.success(t.adminBackups.targetSaved),
       onError: err => {
@@ -241,12 +252,12 @@ function BackupTargetForm({ target }: { target: BackupTarget | null }) {
     setTestResult(null)
     test.mutate(undefined, {
       onSuccess: setTestResult,
-      onError: () => setTestResult({ ok: false, latencyMs: null, error: t.adminBackups.requestFailed }),
+      onError: err => setTestResult({ ok: false, latencyMs: null, error: testErrorText(err, t) }),
     })
   }
 
   return (
-    <form onSubmit={submit} aria-label={t.adminBackups.targetLabel} className="space-y-3">
+    <form onSubmit={submit} aria-label={t.adminBackups.targetFormLabel} className="space-y-3">
       {!isSaved && <p className="text-xs text-muted-foreground">{t.adminBackups.targetNotSet}</p>}
       <Field label={t.adminBackups.endpoint} htmlFor="backup-endpoint">
         <Input id="backup-endpoint" placeholder="https://account.r2.cloudflarestorage.com" value={endpoint} onChange={e => setEndpoint(e.target.value)} />
@@ -289,9 +300,22 @@ function BackupTargetForm({ target }: { target: BackupTarget | null }) {
           {testResultText(testResult, t)}
         </p>
       )}
-      {formError !== null && <p className="text-xs text-bad">{formError}</p>}
+      {formError !== null && <p role="alert" className="text-xs text-bad">{formError}</p>}
     </form>
   )
+}
+
+// A refused Test is told apart by the error code, never by the status or the text.
+function testErrorText(err: unknown, t: Messages): string {
+  const response = (err as { response?: { data?: ErrorBody } }).response
+  const code = response === undefined || response.data === undefined ? undefined : response.data.code
+  if (code === 'BACKUP_TARGET_SECRET_UNREADABLE') {
+    return t.adminBackups.secretUnreadable
+  }
+  if (code === 'BACKUP_TARGET_NOT_FOUND') {
+    return t.adminBackups.noTargetToTest
+  }
+  return errorMessage(err, t.adminBackups.requestFailed)
 }
 
 // The error text after "Failed:" is the control plane's own and stays as sent.

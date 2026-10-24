@@ -48,7 +48,7 @@ describe('AdminBackupsPage', () => {
     expect(within(table).getByText('titan-db')).toBeInTheDocument()
     expect(within(table).getByText('Postgres')).toBeInTheDocument()
     expect(within(table).getByText('66.8 MB')).toBeInTheDocument()
-    expect(within(table).getByText('Ok')).toBeInTheDocument()
+    expect(within(table).getByText('Ok')).toBeInTheDocument() // the state word is the server's own, in both languages
     expect(screen.getByText('3 hours ago')).toBeInTheDocument()
     expect(screen.getByText('4 minutes ago')).toBeInTheDocument()
     await waitFor(() => expect(screen.getByDisplayValue('titan-backup-dev')).toBeInTheDocument())
@@ -80,7 +80,7 @@ describe('AdminBackupsPage', () => {
     await user.click(within(banner).getByRole('button', { name: 'Show them' }))
 
     expect(screen.queryByText('fine-one')).not.toBeInTheDocument()
-    expect(screen.getByText('Overdue')).toBeInTheDocument()
+    expect(screen.getByText('Stale')).toBeInTheDocument()
     await user.click(within(screen.getByRole('alert')).getByRole('button', { name: 'Show all' }))
     expect(screen.getByText('fine-one')).toBeInTheDocument()
   })
@@ -89,7 +89,7 @@ describe('AdminBackupsPage', () => {
     serve([postgres({ health: 'Missing', reason: 'NoPostgresBackupInBucket', takenAt: null, sizeBytes: null, lastWalAt: null })])
     renderPage()
 
-    expect(await screen.findByText('No backup')).toBeInTheDocument()
+    expect(await screen.findByText('Missing')).toBeInTheDocument()
     expect(screen.getByText('No Postgres backup in this bucket: wrong bucket, or no backup yet.')).toBeInTheDocument()
     expect(screen.getByRole('alert')).toHaveTextContent('1 backup needs attention')
   })
@@ -102,7 +102,7 @@ describe('AdminBackupsPage', () => {
     expect(notice).toHaveTextContent('cannot read the backup bucket')
     expect(notice).toHaveTextContent('not the same as having no backup')
     expect(screen.getByText('Unknown')).toBeInTheDocument()
-    expect(screen.queryByText('No backup')).not.toBeInTheDocument()
+    expect(screen.queryByText('Missing')).not.toBeInTheDocument()
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
@@ -151,10 +151,11 @@ describe('AdminBackupsPage', () => {
     renderPage()
     await screen.findByDisplayValue('titan-backup-dev')
 
+    await user.type(screen.getByLabelText('Access key id'), '4')
     await user.click(screen.getByRole('button', { name: 'Save' }))
     await waitFor(() => expect(bodies).toHaveLength(1))
     expect(bodies[0]).toEqual({
-      endpoint: 'https://acct.r2.cloudflarestorage.com', region: 'auto', bucket: 'titan-backup-dev', accessKeyId: 'key-id-123',
+      endpoint: 'https://acct.r2.cloudflarestorage.com', region: 'auto', bucket: 'titan-backup-dev', accessKeyId: 'key-id-1234',
     })
     expect('secretAccessKey' in bodies[0]).toBe(false)
 
@@ -202,7 +203,7 @@ describe('AdminBackupsPage', () => {
     renderPage('vi')
 
     expect(await screen.findByRole('heading', { name: 'Sao lưu' })).toBeInTheDocument()
-    expect(await screen.findByText('Quá hạn')).toBeInTheDocument()
+    expect(await screen.findByText('Stale')).toBeInTheDocument()
     expect(screen.getByRole('alert')).toHaveTextContent('1 bản sao lưu cần chú ý')
     expect(screen.getByText('3 giờ trước')).toBeInTheDocument()
   })
@@ -216,5 +217,68 @@ describe('AdminBackupsPage', () => {
 
     expect(await screen.findByText('Failed to load backups.')).toBeInTheDocument()
     expect(screen.queryByText('Nothing is protected yet.')).not.toBeInTheDocument()
+  })
+  it('does not say "none yet" for a bucket that was never read: the cards say Unknown', async () => {
+    serve([postgres({ health: 'Unknown', reason: 'NotReadYet', takenAt: null, sizeBytes: null, lastWalAt: null })], target(), null)
+    renderPage()
+
+    expect(await screen.findByRole('status')).toHaveTextContent('no recent reading')
+    const cards = [screen.getByRole('region', { name: 'Newest log archived' }), screen.getByRole('region', { name: 'Newest base backup' })]
+    expect(cards.map(c => c.textContent).join('|')).not.toContain('None yet')
+    expect(cards[0]).toHaveTextContent('Unknown')
+  })
+
+  it('says a failed load of the backup target, instead of showing a bare title', async () => {
+    server.use(
+      http.get('*/v1/admin/backups', () => HttpResponse.json({ readAt: null, items: [postgres()] })),
+      http.get('*/v1/admin/backup-target', () => HttpResponse.json({ status: 500, title: 'x', code: 'X' }, { status: 500 })),
+    )
+    renderPage()
+
+    expect(await screen.findByText('Failed to load the backup target.')).toBeInTheDocument()
+  })
+
+  it('treats only BACKUP_TARGET_NOT_FOUND as "no target yet"', async () => {
+    server.use(
+      http.get('*/v1/admin/backups', () => HttpResponse.json({ readAt: null, items: [postgres()] })),
+      http.get('*/v1/admin/backup-target', () => HttpResponse.json({ status: 404, title: 'x', code: 'SOMETHING_ELSE' }, { status: 404 })),
+    )
+    renderPage()
+
+    expect(await screen.findByText('Failed to load the backup target.')).toBeInTheDocument()
+    expect(screen.queryByText('No backup target is set yet. Enter the S3 bucket and its key.')).not.toBeInTheDocument()
+  })
+
+  it('names the reason when Test cannot open the stored secret', async () => {
+    serve([postgres()])
+    server.use(http.post('*/v1/admin/backup-target/test', () =>
+      HttpResponse.json({ status: 503, title: 'x', code: 'BACKUP_TARGET_SECRET_UNREADABLE' }, { status: 503 })))
+    const user = userEvent.setup()
+    renderPage()
+    await screen.findByDisplayValue('titan-backup-dev')
+
+    await user.click(screen.getByRole('button', { name: 'Test connection' }))
+
+    expect(await screen.findByText(/cannot decrypt the stored secret/)).toBeInTheDocument()
+  })
+
+  it('keeps Save off until something changed on a saved target, and trims what is sent', async () => {
+    const bodies: Record<string, unknown>[] = []
+    serve([postgres()])
+    server.use(http.put('*/v1/admin/backup-target', async ({ request }) => {
+      bodies.push((await request.json()) as Record<string, unknown>)
+      return new HttpResponse(null, { status: 204 })
+    }))
+    const user = userEvent.setup()
+    renderPage()
+    await screen.findByDisplayValue('titan-backup-dev')
+
+    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled()
+    await user.type(screen.getByLabelText('Bucket'), '-2  ')
+    expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled()
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => expect(bodies).toHaveLength(1))
+    expect(bodies[0].bucket).toBe('titan-backup-dev-2')
   })
 })

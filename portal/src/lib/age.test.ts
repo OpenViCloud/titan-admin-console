@@ -16,4 +16,8 @@ describe('ageOf', () => {
   ])('%s is %s %d', (iso, unit, count) => {
     expect(ageOf(iso, now)).toEqual({ unit, count })
   })
+
+  it('is null for text that is not a time', () => {
+    expect(ageOf('not a time', now)).toBeNull()
+  })
 })

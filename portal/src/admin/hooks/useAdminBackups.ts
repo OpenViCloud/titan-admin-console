@@ -53,7 +53,7 @@ export function useAdminBackups() {
   })
 }
 
-// No target yet is a normal state (404 BACKUP_TARGET_NOT_FOUND): null, so the page shows an empty form instead of an error.
+// No target yet is a normal state (code BACKUP_TARGET_NOT_FOUND, not any 404): null, so the page shows an empty form instead of an error.
 export function useBackupTarget() {
   return useQuery({
     queryKey: ['admin', 'backup-target'],
@@ -62,8 +62,8 @@ export function useBackupTarget() {
         const response = await api.get<BackupTarget>('/v1/admin/backup-target')
         return response.data
       } catch (err) {
-        const status = (err as { response?: { status?: number } }).response?.status
-        if (status === 404) {
+        const code = (err as { response?: { data?: { code?: string } } }).response?.data?.code
+        if (code === 'BACKUP_TARGET_NOT_FOUND') {
           return null
         }
         throw err
