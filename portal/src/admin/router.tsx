@@ -8,6 +8,7 @@ import { AdminCatalogPage } from './pages/AdminCatalogPage'
 import { AdminVmsPage } from './pages/AdminVmsPage'
 import { AdminNetworksPage } from './pages/AdminNetworksPage'
 import { AdminClustersPage } from './pages/AdminClustersPage'
+import { AdminBackupsPage } from './pages/AdminBackupsPage'
 import { AdminAuditLogPage } from './pages/AdminAuditLogPage'
 
 export { RouterProvider }
@@ -24,6 +25,7 @@ export function createAdminRouter() {
         { path: 'invoices', element: <AdminInvoicesPage /> },
         { path: 'catalog', element: <AdminCatalogPage /> },
         { path: 'clusters', element: <AdminClustersPage /> },
+        { path: 'backups', element: <AdminBackupsPage /> },
         { path: 'vms', element: <AdminVmsPage /> },
         { path: 'networks', element: <AdminNetworksPage /> },
         { path: 'audit-log', element: <AdminAuditLogPage /> },

@@ -1,6 +1,6 @@
 import { Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from 'react-oidc-context'
-import { LayoutDashboard, Building2, Gift, Receipt, Package, Server, Network, Boxes, ScrollText, LogOut } from 'lucide-react'
+import { LayoutDashboard, Building2, Gift, Receipt, Package, Server, Network, Boxes, DatabaseBackup, ScrollText, LogOut } from 'lucide-react'
 import { DropdownMenuItem } from '@/components/ui/dropdown-menu'
 import { AppShell, type Crumb, type NavGroup } from '@/components/shell/AppShell'
 import { useT } from '@/i18n/LanguageContext'
@@ -29,6 +29,7 @@ function navGroups(t: Messages): NavGroup[] {
       items: [
         { to: '/catalog', label: t.adminNav.catalog, icon: Package },
         { to: '/clusters', label: t.adminNav.clusters, icon: Boxes },
+        { to: '/backups', label: t.adminNav.backups, icon: DatabaseBackup },
         { to: '/audit-log', label: t.adminNav.auditLog, icon: ScrollText },
       ],
     },

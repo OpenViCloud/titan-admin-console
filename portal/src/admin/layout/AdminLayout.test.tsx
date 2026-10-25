@@ -29,7 +29,7 @@ describe('AdminLayout', () => {
     expect(within(nav).getAllByRole('heading', { level: 2 }).map(h => h.textContent))
       .toEqual(['Customers', 'Resources', 'Money', 'Platform'])
     expect(within(nav).getAllByRole('link').map(a => a.getAttribute('href'))).toEqual([
-      '/', '/tenants', '/promotional-credits', '/vms', '/networks', '/invoices', '/catalog', '/clusters', '/audit-log',
+      '/', '/tenants', '/promotional-credits', '/vms', '/networks', '/invoices', '/catalog', '/clusters', '/backups', '/audit-log',
     ])
   })
 
