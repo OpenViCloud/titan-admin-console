@@ -1,10 +1,7 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
-import { toast } from 'sonner'
 import {
   useAdminBackups,
   useBackupTarget,
-  useSetBackupTarget,
   useTestBackupTarget,
   type BackupHealth,
   type BackupItem,
@@ -12,7 +9,6 @@ import {
   type BackupTargetTestResult,
 } from '../hooks/useAdminBackups'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table'
 import { useT, useFormat } from '@/i18n/LanguageContext'
@@ -78,7 +74,6 @@ export function AdminBackupsPage() {
           <p className="text-sm text-muted-foreground">{t.adminBackups.restoreBody}</p>
           <p className="text-sm flex flex-wrap gap-x-4 gap-y-1">
             <a className="underline" href={RUNBOOK_URL} target="_blank" rel="noreferrer">{t.adminBackups.runbookLink}</a>
-            <Link className="underline" to="/audit-log">{t.adminBackups.auditLink}</Link>
           </p>
         </section>
       </div>
@@ -199,54 +194,9 @@ function errorMessage(err: unknown, fallback: string): string {
 
 function BackupTargetBlock() {
   const t = useT()
-  const { data: target, isLoading, isError } = useBackupTarget()
-
-  return (
-    <section aria-labelledby="backup-target" className="rounded-lg border border-border p-4 space-y-3">
-      <h2 id="backup-target" className="text-sm font-medium text-foreground">{t.adminBackups.targetTitle}</h2>
-      {isLoading && <p className="text-xs text-muted-foreground">{t.common.loading}</p>}
-      {isError && <p className="text-xs text-bad">{t.adminBackups.targetLoadFailed}</p>}
-      {/* The key changes with the saved row, so a save remounts the form with what was read back. */}
-      {target !== undefined && <BackupTargetForm key={target === null ? 'none' : target.updatedAt} target={target} />}
-    </section>
-  )
-}
-
-function BackupTargetForm({ target }: { target: BackupTarget | null }) {
-  const t = useT()
-  const save = useSetBackupTarget()
+  const { data: target, isLoading, isError, error } = useBackupTarget()
   const test = useTestBackupTarget()
-  const [endpoint, setEndpoint] = useState(target === null ? '' : target.endpoint)
-  const [region, setRegion] = useState(target === null ? 'auto' : target.region)
-  const [bucket, setBucket] = useState(target === null ? '' : target.bucket)
-  const [accessKeyId, setAccessKeyId] = useState(target === null ? '' : target.accessKeyId)
-  // Empty on every open: the stored secret is never sent to the browser.
-  const [secretAccessKey, setSecretAccessKey] = useState('')
-  const [formError, setFormError] = useState<string | null>(null)
   const [testResult, setTestResult] = useState<BackupTargetTestResult | null>(null)
-
-  const isSaved = target !== null
-  const hasSecretOrKeepsOne = secretAccessKey !== '' || isSaved
-  const isFilled = endpoint.trim() !== '' && region.trim() !== '' && bucket.trim() !== '' && accessKeyId.trim() !== ''
-  // A saved target changes nothing (and writes no audit row) until a field or the secret differs from what is stored.
-  const isChanged = target === null
-    || endpoint.trim() !== target.endpoint || region.trim() !== target.region
-    || bucket.trim() !== target.bucket || accessKeyId.trim() !== target.accessKeyId || secretAccessKey !== ''
-  const canSave = !save.isPending && isFilled && hasSecretOrKeepsOne && isChanged
-
-  function submit(e: React.FormEvent) {
-    e.preventDefault()
-    setFormError(null)
-    const body = { endpoint: endpoint.trim(), region: region.trim(), bucket: bucket.trim(), accessKeyId: accessKeyId.trim() }
-    save.mutate(secretAccessKey === '' ? body : { ...body, secretAccessKey }, {
-      onSuccess: () => toast.success(t.adminBackups.targetSaved),
-      onError: err => {
-        const message = errorMessage(err, t.adminBackups.saveFailed)
-        setFormError(message)
-        toast.error(message)
-      },
-    })
-  }
 
   function runTest() {
     setTestResult(null)
@@ -257,40 +207,16 @@ function BackupTargetForm({ target }: { target: BackupTarget | null }) {
   }
 
   return (
-    <form onSubmit={submit} aria-label={t.adminBackups.targetFormLabel} className="space-y-3">
-      {!isSaved && <p className="text-xs text-muted-foreground">{t.adminBackups.targetNotSet}</p>}
-      <Field label={t.adminBackups.endpoint} htmlFor="backup-endpoint">
-        <Input id="backup-endpoint" placeholder="https://account.r2.cloudflarestorage.com" value={endpoint} onChange={e => setEndpoint(e.target.value)} />
-      </Field>
-      <div className="grid gap-3 sm:grid-cols-2">
-        <Field label={t.adminBackups.region} htmlFor="backup-region">
-          <Input id="backup-region" value={region} onChange={e => setRegion(e.target.value)} />
-        </Field>
-        <Field label={t.adminBackups.bucket} htmlFor="backup-bucket">
-          <Input id="backup-bucket" className="font-mono" value={bucket} onChange={e => setBucket(e.target.value)} />
-        </Field>
-      </div>
-      <Field label={t.adminBackups.accessKeyId} htmlFor="backup-key-id">
-        <Input id="backup-key-id" className="font-mono" autoComplete="off" value={accessKeyId} onChange={e => setAccessKeyId(e.target.value)} />
-      </Field>
-      <Field label={t.adminBackups.secretAccessKey} htmlFor="backup-secret">
-        <Input
-          id="backup-secret"
-          type="password"
-          className="font-mono"
-          autoComplete="new-password"
-          value={secretAccessKey}
-          onChange={e => setSecretAccessKey(e.target.value)}
-          aria-describedby="backup-secret-note"
-        />
-        <span id="backup-secret-note" className="text-xs text-muted-foreground">
-          {isSaved ? t.adminBackups.secretKeep : t.adminBackups.secretRequired}
-        </span>
-      </Field>
+    <section aria-labelledby="backup-target" className="rounded-lg border border-border p-4 space-y-3">
+      <h2 id="backup-target" className="text-sm font-medium text-foreground">{t.adminBackups.targetTitle}</h2>
+      {isLoading && <p className="text-xs text-muted-foreground">{t.common.loading}</p>}
+      {isError && <p className="text-xs text-bad">{errorCodeOf(error) === 'BACKUP_TARGET_CONFIG_INVALID' ? t.adminBackups.targetConfigInvalid : t.adminBackups.targetLoadFailed}</p>}
+      {target === null && <p className="text-xs text-muted-foreground">{t.adminBackups.targetNotSet}</p>}
+      {target !== undefined && target !== null && <BackupTargetValues target={target} />}
+      <p className="text-xs text-muted-foreground">{t.adminBackups.targetFromGitops}</p>
 
       <div className="flex flex-wrap items-center gap-2 pt-1">
-        <Button type="submit" disabled={!canSave}>{t.common.save}</Button>
-        <Button type="button" variant="secondary" onClick={runTest} disabled={!isSaved || test.isPending}>
+        <Button type="button" variant="secondary" onClick={runTest} disabled={target === undefined || target === null || test.isPending}>
           {t.adminBackups.testConnection}
         </Button>
         <span className="text-xs text-muted-foreground">{t.adminBackups.testHint}</span>
@@ -300,17 +226,38 @@ function BackupTargetForm({ target }: { target: BackupTarget | null }) {
           {testResultText(testResult, t)}
         </p>
       )}
-      {formError !== null && <p role="alert" className="text-xs text-bad">{formError}</p>}
-    </form>
+    </section>
   )
+}
+
+// Plain text, not inputs: nothing here can be changed, and the key pair's secret never reaches the browser.
+function BackupTargetValues({ target }: { target: BackupTarget }) {
+  const t = useT()
+  return (
+    <dl className="grid gap-x-4 gap-y-2 text-sm sm:grid-cols-[max-content_1fr]">
+      <dt className="text-xs text-muted-foreground">{t.adminBackups.endpoint}</dt>
+      <dd className="font-mono break-all">{target.endpoint}</dd>
+      <dt className="text-xs text-muted-foreground">{t.adminBackups.region}</dt>
+      <dd className="font-mono">{target.region}</dd>
+      <dt className="text-xs text-muted-foreground">{t.adminBackups.bucket}</dt>
+      <dd className="font-mono break-all">{target.bucket}</dd>
+      <dt className="text-xs text-muted-foreground">{t.adminBackups.accessKeyId}</dt>
+      <dd className="font-mono break-all">{target.accessKeyId}</dd>
+    </dl>
+  )
+}
+
+function errorCodeOf(err: unknown): string | undefined {
+  const response = (err as { response?: { data?: ErrorBody } }).response
+  return response === undefined || response.data === undefined ? undefined : response.data.code
 }
 
 // A refused Test is told apart by the error code, never by the status or the text.
 function testErrorText(err: unknown, t: Messages): string {
   const response = (err as { response?: { data?: ErrorBody } }).response
   const code = response === undefined || response.data === undefined ? undefined : response.data.code
-  if (code === 'BACKUP_TARGET_SECRET_UNREADABLE') {
-    return t.adminBackups.secretUnreadable
+  if (code === 'BACKUP_TARGET_CONFIG_INVALID') {
+    return t.adminBackups.targetConfigInvalid
   }
   if (code === 'BACKUP_TARGET_NOT_FOUND') {
     return t.adminBackups.noTargetToTest
@@ -330,13 +277,4 @@ function testResultText(result: BackupTargetTestResult, t: Messages): string {
     return t.adminBackups.testFailed(t.adminBackups.unknownError)
   }
   return t.adminBackups.testFailed(result.error)
-}
-
-function Field({ label, htmlFor, children }: { label: string; htmlFor?: string; children: React.ReactNode }) {
-  return (
-    <div className="flex flex-col gap-1">
-      <label htmlFor={htmlFor} className="text-xs text-muted-foreground">{label}</label>
-      {children}
-    </div>
-  )
 }

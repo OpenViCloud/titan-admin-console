@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from '@testing-library/react'
+import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { http, HttpResponse } from 'msw'
@@ -20,7 +20,7 @@ const postgres = (o = {}) => ({
 
 const target = (o = {}) => ({
   endpoint: 'https://acct.r2.cloudflarestorage.com', region: 'auto', bucket: 'titan-backup-dev',
-  accessKeyId: 'key-id-123', updatedAt: '2026-10-25T10:00:00Z', ...o,
+  accessKeyId: 'key-id-123', ...o,
 })
 
 function serve(items: unknown[], savedTarget: unknown = target(), readAt: string | null = minutesAgo(1)) {
@@ -51,9 +51,9 @@ describe('AdminBackupsPage', () => {
     expect(within(table).getByText('Ok')).toBeInTheDocument() // the state word is the server's own, in both languages
     expect(screen.getByText('3 hours ago')).toBeInTheDocument()
     expect(screen.getByText('4 minutes ago')).toBeInTheDocument()
-    await waitFor(() => expect(screen.getByDisplayValue('titan-backup-dev')).toBeInTheDocument())
-    expect(screen.getByDisplayValue('key-id-123')).toBeInTheDocument()
-    expect(screen.getByDisplayValue('https://acct.r2.cloudflarestorage.com')).toBeInTheDocument()
+    expect(await screen.findByText('titan-backup-dev')).toBeInTheDocument()
+    expect(screen.getByText('key-id-123')).toBeInTheDocument()
+    expect(screen.getByText('https://acct.r2.cloudflarestorage.com')).toBeInTheDocument()
   })
 
   it('shows no warning when everything is Ok', async () => {
@@ -85,12 +85,12 @@ describe('AdminBackupsPage', () => {
     expect(screen.getByText('fine-one')).toBeInTheDocument()
   })
 
-  it('says a missing backup is missing, with the reason a wrong bucket gives', async () => {
+  it('says a missing backup is missing, with the reason a bucket CNPG does not write to gives', async () => {
     serve([postgres({ health: 'Missing', reason: 'NoPostgresBackupInBucket', takenAt: null, sizeBytes: null, lastWalAt: null })])
     renderPage()
 
     expect(await screen.findByText('Missing')).toBeInTheDocument()
-    expect(screen.getByText('No Postgres backup in this bucket: wrong bucket, or no backup yet.')).toBeInTheDocument()
+    expect(screen.getByText('No Postgres backup in this bucket: none written yet, or the database is not archiving here.')).toBeInTheDocument()
     expect(screen.getByRole('alert')).toHaveTextContent('1 backup needs attention')
   })
 
@@ -110,14 +110,14 @@ describe('AdminBackupsPage', () => {
     serve([postgres({ health: 'Stale', reason: 'BaseTooOld' })])
     renderPage()
     await screen.findByRole('table')
-    await waitFor(() => expect(screen.getByDisplayValue('titan-backup-dev')).toBeInTheDocument())
+    await screen.findByText('titan-backup-dev')
 
     const names = screen.getAllByRole('button').map(b => b.textContent ?? '')
-    expect(names.join('|')).not.toMatch(/restore|delete|download|back up now|backup now/i)
+    expect(names.join('|')).not.toMatch(/restore|delete|download|back up now|backup now|save/i)
     expect(screen.queryByRole('link', { name: /restore now|download/i })).not.toBeInTheDocument()
   })
 
-  it('reminds that restoring runs outside the console, with the runbook and the audit log', async () => {
+  it('reminds that restoring runs outside the console, with the runbook', async () => {
     serve([postgres()])
     renderPage()
 
@@ -125,60 +125,28 @@ describe('AdminBackupsPage', () => {
     expect(section).toHaveTextContent('runs outside this console')
     expect(within(section).getByRole('link', { name: 'Disaster recovery runbook' }))
       .toHaveAttribute('href', expect.stringContaining('docs/infra/oci/runbook.md'))
-    expect(within(section).getByRole('link', { name: 'See changes in the audit log' })).toHaveAttribute('href', '/audit-log')
+    expect(within(section).queryByRole('link', { name: /audit log/i })).not.toBeInTheDocument()
   })
 
-  it('opens the secret field empty, with a note that empty keeps the stored one', async () => {
+  it('shows the target as text from the GitOps config: no field to type in, no Save, no secret', async () => {
     serve([postgres()])
     renderPage()
 
-    const secret = await screen.findByLabelText('Secret access key')
-    expect(secret).toHaveValue('')
-    expect(secret).toHaveAttribute('type', 'password')
-    expect(screen.getByText('Leave empty to keep the stored secret.')).toBeInTheDocument()
+    const block = await screen.findByRole('region', { name: 'Backup target' })
+    await within(block).findByText('titan-backup-dev')
+    expect(block.querySelectorAll('input, textarea, select')).toHaveLength(0)
+    expect(within(block).queryByLabelText('Secret access key')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument()
+    expect(block).toHaveTextContent("set in this environment's GitOps config")
   })
 
-  it('saves without a secret field when none was typed, and with it when it was', async () => {
-    const bodies: Record<string, unknown>[] = []
-    serve([postgres()])
-    server.use(
-      http.put('*/v1/admin/backup-target', async ({ request }) => {
-        bodies.push((await request.json()) as Record<string, unknown>)
-        return new HttpResponse(null, { status: 204 })
-      }),
-    )
-    const user = userEvent.setup()
-    renderPage()
-    await screen.findByDisplayValue('titan-backup-dev')
-
-    await user.type(screen.getByLabelText('Access key id'), '4')
-    await user.click(screen.getByRole('button', { name: 'Save' }))
-    await waitFor(() => expect(bodies).toHaveLength(1))
-    expect(bodies[0]).toEqual({
-      endpoint: 'https://acct.r2.cloudflarestorage.com', region: 'auto', bucket: 'titan-backup-dev', accessKeyId: 'key-id-1234',
-    })
-    expect('secretAccessKey' in bodies[0]).toBe(false)
-
-    await user.type(await screen.findByLabelText('Secret access key'), 'S3CR3T-value')
-    await user.click(screen.getByRole('button', { name: 'Save' }))
-    await waitFor(() => expect(bodies).toHaveLength(2))
-    expect(bodies[1].secretAccessKey).toBe('S3CR3T-value')
-  })
-
-  it('needs a secret the first time, and cannot test a target that is not saved', async () => {
+  it('says no key pair is configured, and cannot test one that is not there', async () => {
     serve([], null)
-    const user = userEvent.setup()
     renderPage()
 
-    expect(await screen.findByText('Required the first time.')).toBeInTheDocument()
-    expect(screen.getByText('No backup target is set yet. Enter the S3 bucket and its key.')).toBeInTheDocument()
+    expect(await screen.findByText('No backup target key pair is configured in this environment yet.')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Test connection' })).toBeDisabled()
-    await user.type(screen.getByLabelText('Endpoint'), 'https://acct.r2.cloudflarestorage.com')
-    await user.type(screen.getByLabelText('Bucket'), 'titan-backup-dev')
-    await user.type(screen.getByLabelText('Access key id'), 'key-id')
-    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled()
-    await user.type(screen.getByLabelText('Secret access key'), 'S3CR3T-value')
-    expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled()
+    expect(screen.queryAllByRole('textbox')).toHaveLength(0)
   })
 
   it('shows the connection result with its latency, or the reason it failed', async () => {
@@ -187,7 +155,7 @@ describe('AdminBackupsPage', () => {
     server.use(http.post('*/v1/admin/backup-target/test', () => HttpResponse.json(answer)))
     const user = userEvent.setup()
     renderPage()
-    await screen.findByDisplayValue('titan-backup-dev')
+    await screen.findByText('titan-backup-dev')
 
     await user.click(screen.getByRole('button', { name: 'Test connection' }))
     expect(await screen.findByText('Connected in 87 ms.')).toBeInTheDocument()
@@ -238,7 +206,7 @@ describe('AdminBackupsPage', () => {
     expect(await screen.findByText('Failed to load the backup target.')).toBeInTheDocument()
   })
 
-  it('treats only BACKUP_TARGET_NOT_FOUND as "no target yet"', async () => {
+  it('treats only BACKUP_TARGET_NOT_FOUND as "no key pair"', async () => {
     server.use(
       http.get('*/v1/admin/backups', () => HttpResponse.json({ readAt: null, items: [postgres()] })),
       http.get('*/v1/admin/backup-target', () => HttpResponse.json({ status: 404, title: 'x', code: 'SOMETHING_ELSE' }, { status: 404 })),
@@ -246,39 +214,41 @@ describe('AdminBackupsPage', () => {
     renderPage()
 
     expect(await screen.findByText('Failed to load the backup target.')).toBeInTheDocument()
-    expect(screen.queryByText('No backup target is set yet. Enter the S3 bucket and its key.')).not.toBeInTheDocument()
+    expect(screen.queryByText('No backup target key pair is configured in this environment yet.')).not.toBeInTheDocument()
   })
 
-  it('names the reason when Test cannot open the stored secret', async () => {
+  it('names a configuration that cannot work, when the target is read and when it is tested', async () => {
+    serve([postgres()])
+    server.use(
+      http.get('*/v1/admin/backup-target', () =>
+        HttpResponse.json({ status: 503, title: 'x', code: 'BACKUP_TARGET_CONFIG_INVALID' }, { status: 503 })),
+    )
+    renderPage()
+
+    expect(await screen.findByText(/cannot work: check the control plane's BackupTarget settings/)).toBeInTheDocument()
+    expect(screen.queryByText('Failed to load the backup target.')).not.toBeInTheDocument()
+  })
+
+  it('names the configuration when Test refuses it', async () => {
     serve([postgres()])
     server.use(http.post('*/v1/admin/backup-target/test', () =>
-      HttpResponse.json({ status: 503, title: 'x', code: 'BACKUP_TARGET_SECRET_UNREADABLE' }, { status: 503 })))
+      HttpResponse.json({ status: 503, title: 'x', code: 'BACKUP_TARGET_CONFIG_INVALID' }, { status: 503 })))
     const user = userEvent.setup()
     renderPage()
-    await screen.findByDisplayValue('titan-backup-dev')
+    await screen.findByText('titan-backup-dev')
 
     await user.click(screen.getByRole('button', { name: 'Test connection' }))
 
-    expect(await screen.findByText(/cannot decrypt the stored secret/)).toBeInTheDocument()
+    expect(await screen.findByText(/Failed: The backup target in this environment's GitOps config cannot work/)).toBeInTheDocument()
   })
 
-  it('keeps Save off until something changed on a saved target, and trims what is sent', async () => {
-    const bodies: Record<string, unknown>[] = []
+  it('reads the target block in Vietnamese', async () => {
     serve([postgres()])
-    server.use(http.put('*/v1/admin/backup-target', async ({ request }) => {
-      bodies.push((await request.json()) as Record<string, unknown>)
-      return new HttpResponse(null, { status: 204 })
-    }))
-    const user = userEvent.setup()
-    renderPage()
-    await screen.findByDisplayValue('titan-backup-dev')
+    renderPage('vi')
 
-    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled()
-    await user.type(screen.getByLabelText('Bucket'), '-2  ')
-    expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled()
-    await user.click(screen.getByRole('button', { name: 'Save' }))
-
-    await waitFor(() => expect(bodies).toHaveLength(1))
-    expect(bodies[0].bucket).toBe('titan-backup-dev-2')
+    const block = await screen.findByRole('region', { name: 'Đích sao lưu' })
+    await within(block).findByText('titan-backup-dev')
+    expect(block).toHaveTextContent('khai ở cấu hình GitOps')
+    expect(within(block).getByRole('button', { name: 'Thử kết nối' })).toBeInTheDocument()
   })
 })
