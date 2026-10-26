@@ -23,9 +23,18 @@ const target = (o = {}) => ({
   accessKeyId: 'key-id-123', ...o,
 })
 
+const tenantA = '0123abcd-0000-4000-8000-000000000001'
+
+const disk = (o = {}) => ({
+  kind: 'vm', name: 'web-1', tenantId: tenantA,
+  takenAt: hoursAgo(5), sizeBytes: 667_000_000, health: 'Ok', reason: null, lastWalAt: null,
+  ...o,
+})
+
 function serve(items: unknown[], savedTarget: unknown = target(), readAt: string | null = minutesAgo(1)) {
   server.use(
     http.get('*/v1/admin/backups', () => HttpResponse.json({ readAt, items })),
+    http.get('*/v1/tenants', () => HttpResponse.json([{ id: tenantA, name: 'Acme', status: 'Active' }])),
     http.get('*/v1/admin/backup-target', () =>
       savedTarget === null
         ? HttpResponse.json({ status: 404, title: 'x', code: 'BACKUP_TARGET_NOT_FOUND' }, { status: 404 })
@@ -54,6 +63,39 @@ describe('AdminBackupsPage', () => {
     expect(await screen.findByText('titan-backup-dev')).toBeInTheDocument()
     expect(screen.getByText('key-id-123')).toBeInTheDocument()
     expect(screen.getByText('https://acct.r2.cloudflarestorage.com')).toBeInTheDocument()
+  })
+
+  // docs/features/backup/design.md#incus-backup: one row per VM and volume Incus holds, under its tenant's name.
+  it('shows each VM and volume with its tenant, its kind and its own reason', async () => {
+    serve([
+      postgres(),
+      disk(),
+      disk({ kind: 'volume', name: 'data-1', health: 'Stale', reason: 'BackupTooOld', takenAt: hoursAgo(30) }),
+      disk({ name: 'db-2', health: 'Missing', reason: 'NoBackup', takenAt: null, sizeBytes: null }),
+    ])
+    renderPage()
+
+    const table = await screen.findByRole('table', { name: 'Newest backup of each resource' })
+    const web = within(table).getByText('web-1').closest('tr') as HTMLElement
+    expect(await within(web).findByText('Acme')).toBeInTheDocument()
+    expect(within(web).getByText('VM')).toBeInTheDocument()
+    expect(within(web).getByText('636.1 MB')).toBeInTheDocument()
+    const data = within(table).getByText('data-1').closest('tr') as HTMLElement
+    expect(within(data).getByText('Volume')).toBeInTheDocument()
+    expect(within(data).getByText('The newest backup is older than the limit.')).toBeInTheDocument()
+    const missing = within(table).getByText('db-2').closest('tr') as HTMLElement
+    expect(within(missing).getByText('No backup found.')).toBeInTheDocument()
+    const platform = within(table).getByText('titan-db').closest('tr') as HTMLElement
+    expect(within(platform).getByText('—', { selector: '[data-column="tenant"]' })).toBeInTheDocument()
+  })
+
+  it('names the kinds and the new reason in Vietnamese too', async () => {
+    serve([disk({ kind: 'volume', name: 'data-1', health: 'Stale', reason: 'BackupTooOld' })])
+    renderPage('vi')
+
+    const row = (await screen.findByText('data-1')).closest('tr') as HTMLElement
+    expect(within(row).getByText('Ổ đĩa')).toBeInTheDocument()
+    expect(within(row).getByText('Bản sao lưu mới nhất cũ hơn giới hạn.')).toBeInTheDocument()
   })
 
   it('shows no warning when everything is Ok', async () => {

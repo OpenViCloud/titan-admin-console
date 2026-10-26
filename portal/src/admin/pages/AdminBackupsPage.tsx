@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
+import { useAdminTenants } from '../hooks/useAdminTenants'
 import {
   useAdminBackups,
   useBackupTarget,
@@ -132,6 +133,13 @@ function healthVariant(health: BackupHealth): 'success' | 'warning' | 'destructi
 function BackupTable({ items }: { items: BackupItem[] }) {
   const t = useT()
   const f = useFormat()
+  // VM and volume rows belong to a tenant (docs/features/backup/design.md#incus-backup); Postgres is the platform's.
+  const { data: tenants } = useAdminTenants()
+  const tenantName = useMemo(() => {
+    const m = new Map<string, string>()
+    tenants?.forEach(tenant => m.set(tenant.id, tenant.name))
+    return m
+  }, [tenants])
 
   if (items.length === 0) {
     return (
@@ -147,6 +155,7 @@ function BackupTable({ items }: { items: BackupItem[] }) {
         <TableHeader>
           <TableRow>
             <TableHead>{t.adminBackups.resource}</TableHead>
+            <TableHead>{t.adminBackups.tenant}</TableHead>
             <TableHead>{t.adminBackups.kind}</TableHead>
             <TableHead>{t.adminBackups.takenAt}</TableHead>
             <TableHead>{t.adminBackups.size}</TableHead>
@@ -157,6 +166,7 @@ function BackupTable({ items }: { items: BackupItem[] }) {
           {items.map(i => (
             <TableRow key={`${i.kind}|${i.name}|${i.tenantId ?? ''}`}>
               <TableCell className="font-mono text-xs">{i.name}</TableCell>
+              <TableCell data-column="tenant">{i.tenantId === null ? '—' : (tenantName.get(i.tenantId) ?? i.tenantId)}</TableCell>
               <TableCell>{t.adminBackups.kinds[i.kind] ?? i.kind}</TableCell>
               <TableCell>{i.takenAt === null ? '—' : f.dateTime(i.takenAt)}</TableCell>
               <TableCell>{i.sizeBytes === null ? '—' : formatBytes(i.sizeBytes)}</TableCell>
