@@ -89,7 +89,7 @@ describe('AdminBackupsPage', () => {
     expect(within(platform).getByText('—', { selector: '[data-column="tenant"]' })).toBeInTheDocument()
   })
 
-  it('names the kinds and the new reason in Vietnamese too', async () => {
+  it('names the kinds and BackupTooOld in Vietnamese too', async () => {
     serve([disk({ kind: 'volume', name: 'data-1', health: 'Stale', reason: 'BackupTooOld' })])
     renderPage('vi')
 
