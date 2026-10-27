@@ -336,7 +336,7 @@ export const en = {
     allTenants: 'All tenants',
     tenant: 'Tenant',
     status: 'Status',
-    zone: 'Zone',
+    cluster: 'Cluster',
   },
   adminBackups: {
     title: 'Backups',
@@ -409,7 +409,7 @@ export const en = {
     copyCertificate: 'Copy certificate',
     // The `incus config trust add-certificate` command follows; it stays as typed.
     onTheCluster: 'On the cluster: ',
-    formLabel: (zoneId: string) => `Cluster ${zoneId}`,
+    formLabel: (clusterId: string) => `Cluster ${clusterId}`,
     clusterName: 'Cluster name',
     endpoint: 'Endpoint',
     serverFingerprint: 'Server fingerprint',
@@ -430,7 +430,7 @@ export const en = {
     syncing: 'Syncing…',
     syncTriggered: 'Sync triggered',
     syncFailed: 'Failed to trigger sync',
-    syncResult: 'Sync triggered — the status column updates as each template finishes in each zone.',
+    syncResult: 'Sync triggered — the status column updates as each template finishes in each cluster.',
     loadFailed: 'Failed to load catalog.',
     empty: 'No templates',
     name: 'Name',

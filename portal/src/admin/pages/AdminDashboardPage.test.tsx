@@ -18,7 +18,7 @@ const tenant = (o = {}) => ({
 })
 const vm = (o = {}) => ({
   id: 'v1', tenantId: 't1', name: 'web', currentState: 'Running', desiredState: 'Running', transition: null as string | null, ipAddress: null, networkId: 'n1',
-  vmOfferingId: 'm', templateId: 'tpl', zoneId: 'z', createdAt: '2026-01-01T00:00:00Z',
+  vmOfferingId: 'm', templateId: 'tpl', clusterId: 'z', createdAt: '2026-01-01T00:00:00Z',
   currentExistence: 'Exists', desiredExistence: 'Exists',
   requestFailureReason: null as string | null, requestFailureDetail: null as string | null, requestFailedAt: null as string | null, ...o,
 })

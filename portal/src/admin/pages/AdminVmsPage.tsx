@@ -80,7 +80,7 @@ export function AdminVmsPage() {
               <TableHead>{t.adminFilters.status}</TableHead>
               <TableHead>{t.adminVms.offering}</TableHead>
               <TableHead>{t.adminVms.ip}</TableHead>
-              <TableHead>{t.adminFilters.zone}</TableHead>
+              <TableHead>{t.adminFilters.cluster}</TableHead>
               <TableHead />
             </TableRow>
           </TableHeader>
@@ -99,7 +99,7 @@ export function AdminVmsPage() {
                 </TableCell>
                 <TableCell>{vm.vmOfferingId}</TableCell>
                 <TableCell>{vm.ipAddress ?? '—'}</TableCell>
-                <TableCell>{vm.zoneId}</TableCell>
+                <TableCell>{vm.clusterId}</TableCell>
                 <TableCell className="text-right">
                   <Button variant="destructive" onClick={() => setDeleting(vm)}>{t.common.delete}</Button>
                 </TableCell>

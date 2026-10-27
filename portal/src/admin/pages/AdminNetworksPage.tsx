@@ -66,7 +66,7 @@ export function AdminNetworksPage() {
               <TableHead><SortByName dir={sortDir} onToggle={() => setSortDir(nextSortDir)} /></TableHead>
               <TableHead>{t.adminFilters.status}</TableHead>
               <TableHead>{t.adminNetworks.cidr}</TableHead>
-              <TableHead>{t.adminFilters.zone}</TableHead>
+              <TableHead>{t.adminFilters.cluster}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -83,7 +83,7 @@ export function AdminNetworksPage() {
                   </Badge>
                 </TableCell>
                 <TableCell>{n.cidr ?? '—'}</TableCell>
-                <TableCell>{n.zoneId}</TableCell>
+                <TableCell>{n.clusterId}</TableCell>
               </TableRow>
             ))}
           </TableBody>

@@ -4,12 +4,12 @@ import { api } from '@/lib/api'
 import { pollWhileASyncWaits } from '@/lib/templateState'
 
 // Shape mirrors AdminTemplateQueryResult (control-plane). GET /v1/admin/templates returns EVERY template with its
-// internal sync per zone — unlike the customer GET /v1/templates (docs/features/catalog/design.md#template-per-zone):
-// each zone's cluster holds its own image alias, so a template can be there in one zone and not in another.
+// internal sync per cluster — unlike the customer GET /v1/templates (docs/features/catalog/design.md#template-per-cluster):
+// each cluster holds its own image alias, so a template can be there in one cluster and not in another.
 
-// Mirrors AdminTemplateZoneQueryResult (docs/features/catalog/design.md#template-state-is-existence).
-export interface AdminTemplateZone {
-  zoneId: string
+// Mirrors AdminTemplateClusterQueryResult (docs/features/catalog/design.md#template-state-is-existence).
+export interface AdminTemplateCluster {
+  clusterId: string
   currentExistence: 'NotCreated' | 'Exists' | 'NotFound'
   desiredExistence: 'Exists'
   transition: 'Syncing' | null
@@ -28,24 +28,24 @@ export interface AdminTemplate {
   // against the offerings this page already loads, so one catalog defines what "m" means.
   vmOfferingId: string
   diskGb: number | null
-  zones: AdminTemplateZone[] // ordered by zone id
+  clusters: AdminTemplateCluster[] // ordered by cluster id
 }
 
-// Every zone row of every template: what the poll and the status column read.
-export function templateZones(templates: readonly AdminTemplate[] | undefined): AdminTemplateZone[] | undefined {
+// Every cluster row of every template: what the poll and the status column read.
+export function templateClusters(templates: readonly AdminTemplate[] | undefined): AdminTemplateCluster[] | undefined {
   if (templates === undefined) {
     return undefined
   }
-  return templates.flatMap(t => t.zones)
+  return templates.flatMap(t => t.clusters)
 }
 
-// Refreshes itself while a sync waits in any zone, then stops — so the status column moves without the page
+// Refreshes itself while a sync waits in any cluster, then stops — so the status column moves without the page
 // remembering it clicked Sync.
 export function useTemplatesCatalog() {
   return useQuery({
     queryKey: ['admin', 'templates'],
     queryFn: () => api.get<AdminTemplate[]>('/v1/admin/templates').then(r => r.data),
-    refetchInterval: query => pollWhileASyncWaits(templateZones(query.state.data)),
+    refetchInterval: query => pollWhileASyncWaits(templateClusters(query.state.data)),
   })
 }
 

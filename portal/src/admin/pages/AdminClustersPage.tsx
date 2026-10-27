@@ -27,7 +27,7 @@ export function AdminClustersPage() {
         {isLoading && <p className="text-sm text-muted-foreground">{t.common.loading}</p>}
         {isError && <p className="text-sm text-muted-foreground">{t.adminClusters.loadFailed}</p>}
         {clusters !== undefined && clusters.length === 0 && <p className="text-sm text-muted-foreground">{t.adminClusters.noClusters}</p>}
-        {clusters !== undefined && clusters.map(c => <ClusterCard key={c.zoneId} cluster={c} />)}
+        {clusters !== undefined && clusters.map(c => <ClusterCard key={c.clusterId} cluster={c} />)}
       </div>
     </div>
   )
@@ -118,8 +118,8 @@ function ClusterCard({ cluster }: { cluster: AdminCluster }) {
   }
 
   return (
-    <section className="rounded-lg border border-border p-4 space-y-3" aria-label={t.adminClusters.formLabel(cluster.zoneId)}>
-      <span className="font-mono text-[13px] text-foreground">{cluster.zoneId}</span>
+    <section className="rounded-lg border border-border p-4 space-y-3" aria-label={t.adminClusters.formLabel(cluster.clusterId)}>
+      <span className="font-mono text-[13px] text-foreground">{cluster.clusterId}</span>
       <Field label={t.adminClusters.clusterName}>
         <span className="text-sm text-foreground">{cluster.name}</span>
       </Field>

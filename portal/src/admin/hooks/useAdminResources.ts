@@ -19,7 +19,7 @@ export interface AdminVm {
   networkId: string
   vmOfferingId: string
   templateId: string
-  zoneId: string
+  clusterId: string
   createdAt: string
   requestFailureReason: string | null
   // Admin-only raw error of a refused create — the tenant API deliberately omits it, so a failed create can be
@@ -32,7 +32,7 @@ export interface AdminNetwork {
   id: string
   tenantId: string
   name: string
-  zoneId: string
+  clusterId: string
   cidr: string | null
   // docs/architecture/desired-and-current.md#provider-state-is-verbatim — see lib/networkState.ts
   currentState: string | null

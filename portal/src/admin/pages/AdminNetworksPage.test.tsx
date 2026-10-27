@@ -7,7 +7,7 @@ import { renderWithProviders } from '@/test/renderWithProviders'
 import { AdminNetworksPage } from './AdminNetworksPage'
 
 const net = (o = {}) => ({
-  id: 'n1', tenantId: 't1', name: 'prod-net', zoneId: 'vn-hcm-1', cidr: '10.0.0.0/24',
+  id: 'n1', tenantId: 't1', name: 'prod-net', clusterId: 'vn-hcm-1', cidr: '10.0.0.0/24',
   currentState: 'Created' as string | null, currentExistence: 'Exists', desiredExistence: 'Exists', transition: null as string | null,
   requestFailureReason: null as string | null, requestFailureDetail: null as string | null, requestFailedAt: null as string | null,
   createdAt: '2026-01-01T00:00:00Z', ...o,
