@@ -31,7 +31,7 @@ Node 22.
 
 ## Image
 
-Every push to `main` publishes the `linux/arm64` image `ghcr.io/openvicloud/titan-admin-console`
+Every push to `main` publishes the `linux/arm64` and `linux/amd64` image `ghcr.io/openvicloud/titan-admin-console`
 (`ci-admin-portal.yml`), tagged with the commit's first 7 characters. The image builds beside the tests, its layers kept
 in the Actions cache; only the push job of a push to `main` may write packages, once the tests pass. Pull requests run
 the tests and build the image without pushing it. Which tag an environment runs is decided outside this repository: dev
