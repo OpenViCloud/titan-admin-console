@@ -4,7 +4,7 @@ import { api } from '@/lib/api'
 // Shape mirrors AdminClusterDto (control-plane): a cluster as the control plane's configuration holds it
 // (docs/features/cluster/design.md#cluster-from-config). Null = not set.
 export interface AdminCluster {
-  zoneId: string
+  clusterId: string
   name: string
   endpoint: string
   serverFingerprint: string

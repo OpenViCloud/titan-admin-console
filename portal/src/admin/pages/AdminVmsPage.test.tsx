@@ -8,7 +8,7 @@ import { AdminVmsPage } from './AdminVmsPage'
 
 const vm = (o = {}) => ({
   id: 'v1', tenantId: 't1', name: 'web-1', currentState: 'Running', desiredState: 'Running', transition: null as string | null, ipAddress: '10.0.0.5',
-  networkId: 'n1', vmOfferingId: 's', templateId: 'tmpl', zoneId: 'vn-hcm-1',
+  networkId: 'n1', vmOfferingId: 's', templateId: 'tmpl', clusterId: 'vn-hcm-1',
   createdAt: '2026-01-01T00:00:00Z', currentExistence: 'Exists', desiredExistence: 'Exists',
   requestFailureReason: null as string | null, requestFailureDetail: null as string | null, requestFailedAt: null as string | null, ...o,
 })

@@ -13,7 +13,7 @@ const TITAN_FINGERPRINT = '7c094b4f42e1d25d78b9d017eaa125827a8824d978e3cf8973916
 const TITAN_PEM = '-----BEGIN CERTIFICATE-----\nMIIBtitan\n-----END CERTIFICATE-----\n'
 
 const cluster = (o = {}) => ({
-  zoneId: 'singapore01', name: 'Singapore 01', endpoint: 'https://localhost:8443', serverFingerprint: PIN,
+  clusterId: 'singapore01', name: 'Singapore 01', endpoint: 'https://localhost:8443', serverFingerprint: PIN,
   providerSettings: { ovnUplinkNetwork: 'ovnup', storagePool: 'default', ipv6Block: '2001:41d0:d00:d400::/56' },
   ...o,
 })
@@ -65,7 +65,7 @@ describe('AdminClustersPage', () => {
   })
 
   it('shows each configured cluster with its connection and provider settings', async () => {
-    serve([cluster(), cluster({ zoneId: 'local-mac', name: 'Local Mac', endpoint: 'https://192.168.104.1:8443',
+    serve([cluster(), cluster({ clusterId: 'local-mac', name: 'Local Mac', endpoint: 'https://192.168.104.1:8443',
       providerSettings: { ovnUplinkNetwork: 'ovnup', storagePool: 'default', ipv6Block: null } })])
     renderWithProviders(<AdminClustersPage />)
 

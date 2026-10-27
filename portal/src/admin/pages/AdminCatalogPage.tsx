@@ -1,13 +1,13 @@
 import { toast } from 'sonner'
 import { useTemplatesCatalog, useSyncTemplates, useVmOfferingsCatalog } from '../hooks/useAdminCatalog'
-import { templateZoneLabel } from '@/lib/templateState'
+import { templateClusterLabel } from '@/lib/templateState'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { OfferingsSection } from './OfferingsSection'
 import { useT } from '@/i18n/LanguageContext'
 
-// Badge label (templateZoneLabel: the waiting sync, else whether the cluster holds the alias) → semantic variant.
+// Badge label (templateClusterLabel: the waiting sync, else whether the cluster holds the alias) → semantic variant.
 // Available=ok (green), Not synced/Syncing=needs-attention (amber), Failed/Not found=action-needed (red). Text label
 // carries meaning too — not colour alone (a11y).
 const STATE_VARIANT: Record<string, 'success' | 'warning' | 'destructive'> = {
@@ -19,14 +19,14 @@ const STATE_VARIANT: Record<string, 'success' | 'warning' | 'destructive'> = {
 }
 
 // The tooltip: why the last sync gave up, and the raw error after it — this page is the operator's.
-function failureTitle(zone: { requestFailureReason: string | null; requestFailureDetail: string | null }): string | undefined {
-  if (zone.requestFailureReason === null) {
+function failureTitle(cluster: { requestFailureReason: string | null; requestFailureDetail: string | null }): string | undefined {
+  if (cluster.requestFailureReason === null) {
     return undefined
   }
-  if (zone.requestFailureDetail === null) {
-    return zone.requestFailureReason
+  if (cluster.requestFailureDetail === null) {
+    return cluster.requestFailureReason
   }
-  return `${zone.requestFailureReason}\n${zone.requestFailureDetail}`
+  return `${cluster.requestFailureReason}\n${cluster.requestFailureDetail}`
 }
 
 export function AdminCatalogPage() {
@@ -92,15 +92,15 @@ export function AdminCatalogPage() {
               <TableRow key={template.id}>
                 <TableCell>{template.name}</TableCell>
                 <TableCell>
-                  {/* One badge per zone: each zone's cluster syncs on its own (docs/features/catalog/design.md#template-per-zone).
+                  {/* One badge per cluster: each cluster syncs on its own (docs/features/catalog/design.md#template-per-cluster).
                       None yet = no sync run has asked for it anywhere. */}
-                  {template.zones.length === 0 ? (
+                  {template.clusters.length === 0 ? (
                     <span className="text-faint">—</span>
                   ) : (
                     <div className="flex flex-wrap gap-1">
-                      {template.zones.map(z => (
-                        <Badge key={z.zoneId} variant={STATE_VARIANT[templateZoneLabel(z)] ?? 'warning'} title={failureTitle(z)}>
-                          {`${z.zoneId} · ${templateZoneLabel(z)}`}
+                      {template.clusters.map(z => (
+                        <Badge key={z.clusterId} variant={STATE_VARIANT[templateClusterLabel(z)] ?? 'warning'} title={failureTitle(z)}>
+                          {`${z.clusterId} · ${templateClusterLabel(z)}`}
                         </Badge>
                       ))}
                     </div>
