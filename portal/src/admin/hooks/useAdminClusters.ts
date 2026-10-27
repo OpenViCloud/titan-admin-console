@@ -1,25 +1,18 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 
-// Shape mirrors AdminClusterDto (control-plane). 'db' = a registered Incus cluster; 'none' = a configured
-// zone with no cluster yet (docs/features/cluster/design.md#cluster-incus). providerSettings is left out: no
-// page edits it yet.
+// Shape mirrors AdminClusterDto (control-plane): a cluster as the control plane's configuration holds it
+// (docs/features/cluster/design.md#cluster-from-config). Null = not set.
 export interface AdminCluster {
-  id: string | null
   zoneId: string
   name: string
   endpoint: string
   serverFingerprint: string
-  source: 'db' | 'none'
-  createdAt: string | null
-  updatedAt: string | null
-}
-
-export interface UpsertClusterInput {
-  zoneId: string
-  name: string
-  endpoint: string
-  serverFingerprint: string
+  providerSettings: {
+    ovnUplinkNetwork: string | null
+    storagePool: string | null
+    ipv6Block: string | null
+  }
 }
 
 // The control plane sends null, not an absent field, for the half that does not apply.
@@ -53,26 +46,6 @@ export function useProviderClientCertificate() {
     queryKey: ['admin', 'provider-client-certificate'],
     queryFn: () =>
       api.get<ProviderClientCertificate>('/v1/admin/clusters/client-certificate').then(r => r.data),
-  })
-}
-
-export function useUpsertCluster() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: ({ zoneId, ...body }: UpsertClusterInput) =>
-      // docs/architecture/http-contract.md#commands-return-no-data: 204 with no body — the cluster list is re-read instead.
-      api.put(`/v1/admin/clusters/${encodeURIComponent(zoneId)}`, body),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'clusters'] }),
-  })
-}
-
-// Removes a zone's cluster row; the zone reads 'none' again until a cluster is saved.
-export function useDeleteCluster() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: (zoneId: string) =>
-      api.delete(`/v1/admin/clusters/${encodeURIComponent(zoneId)}`),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'clusters'] }),
   })
 }
 

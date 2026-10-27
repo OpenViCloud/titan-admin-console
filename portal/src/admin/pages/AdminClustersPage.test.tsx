@@ -13,15 +13,9 @@ const TITAN_FINGERPRINT = '7c094b4f42e1d25d78b9d017eaa125827a8824d978e3cf8973916
 const TITAN_PEM = '-----BEGIN CERTIFICATE-----\nMIIBtitan\n-----END CERTIFICATE-----\n'
 
 const cluster = (o = {}) => ({
-  id: 'c1', zoneId: 'mock', name: 'incus-stub', endpoint: 'https://incus-stub:8443',
-  serverFingerprint: PIN, source: 'db', createdAt: '2026-10-07T00:00:00Z', updatedAt: '2026-10-07T00:00:00Z',
-  providerSettings: { ovnUplinkNetwork: null, storagePool: null },
+  zoneId: 'singapore01', name: 'Singapore 01', endpoint: 'https://localhost:8443', serverFingerprint: PIN,
+  providerSettings: { ovnUplinkNetwork: 'ovnup', storagePool: 'default', ipv6Block: '2001:41d0:d00:d400::/56' },
   ...o,
-})
-
-const notConfigured = () => cluster({
-  id: null, zoneId: 'singapore01', name: 'singapore01', endpoint: '', serverFingerprint: '', source: 'none',
-  createdAt: null, updatedAt: null,
 })
 
 function serve(clusters: unknown[]) {
@@ -57,7 +51,7 @@ describe('AdminClustersPage', () => {
     expect(writeText).toHaveBeenCalledWith(TITAN_PEM)
   })
 
-  it('reports an unreadable certificate in its block and keeps the zone forms usable', async () => {
+  it('reports an unreadable certificate in its block and still lists the clusters', async () => {
     server.use(
       http.get('*/v1/admin/clusters', () => HttpResponse.json([cluster()])),
       http.get('*/v1/admin/clusters/client-certificate', () =>
@@ -67,80 +61,45 @@ describe('AdminClustersPage', () => {
 
     const block = await screen.findByRole('region', { name: 'Titan client certificate' })
     await waitFor(() => expect(within(block).getByText(/CLUSTER_IDENTITY_UNREADABLE/)).toBeInTheDocument())
-    expect(screen.getByDisplayValue('https://incus-stub:8443')).toBeInTheDocument()
+    expect(await screen.findByText('https://localhost:8443')).toBeInTheDocument()
   })
 
-  it('shows a saved zone with endpoint and server fingerprint, and no username or password', async () => {
+  it('shows each configured cluster with its connection and provider settings', async () => {
+    serve([cluster(), cluster({ zoneId: 'local-mac', name: 'Local Mac', endpoint: 'https://192.168.104.1:8443',
+      providerSettings: { ovnUplinkNetwork: 'ovnup', storagePool: 'default', ipv6Block: null } })])
+    renderWithProviders(<AdminClustersPage />)
+
+    const sg = await screen.findByRole('region', { name: 'Cluster singapore01' })
+    expect(within(sg).getByText('Singapore 01')).toBeInTheDocument()
+    expect(within(sg).getByText('https://localhost:8443')).toBeInTheDocument()
+    expect(within(sg).getByText(PIN)).toBeInTheDocument()
+    expect(within(sg).getByText('ovnup')).toBeInTheDocument()
+    expect(within(sg).getByText('2001:41d0:d00:d400::/56')).toBeInTheDocument()
+    const local = screen.getByRole('region', { name: 'Cluster local-mac' })
+    expect(within(local).getByText('https://192.168.104.1:8443')).toBeInTheDocument()
+    expect(within(local).getByText('Not set')).toBeInTheDocument()
+  })
+
+  // Clusters are the control plane's configuration: nothing on the page writes one.
+  it('offers no field to edit and no Save or Delete', async () => {
     serve([cluster()])
     renderWithProviders(<AdminClustersPage />)
+    await screen.findByRole('region', { name: 'Cluster singapore01' })
 
-    await waitFor(() => expect(screen.getByDisplayValue('https://incus-stub:8443')).toBeInTheDocument())
-    expect(screen.getByDisplayValue('incus-stub')).toBeInTheDocument()
-    expect(screen.getByDisplayValue(PIN)).toBeInTheDocument()
-    expect(screen.getByText('Saved')).toBeInTheDocument()
-    expect(screen.queryByLabelText(/username/i)).not.toBeInTheDocument()
-    expect(screen.queryByLabelText(/password/i)).not.toBeInTheDocument()
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Delete' })).not.toBeInTheDocument()
+    expect(screen.getByText(/configuration of the control plane/)).toBeInTheDocument()
   })
 
-  it('saves name, endpoint and server fingerprint only, then reads the list again', async () => {
-    let body: Record<string, unknown> | null = null
-    let listReads = 0
-    server.use(
-      http.get('*/v1/admin/clusters', () => {
-        listReads++
-        if (body === null) {
-          return HttpResponse.json([notConfigured()])
-        }
-        return HttpResponse.json([cluster({ zoneId: 'singapore01', name: 'singapore01', endpoint: 'https://incus-sg:8443' })])
-      }),
-      http.get('*/v1/admin/clusters/client-certificate', () =>
-        HttpResponse.json({ certificatePem: TITAN_PEM, fingerprint: TITAN_FINGERPRINT })),
-      http.put('*/v1/admin/clusters/singapore01', async ({ request }) => {
-        body = (await request.json()) as Record<string, unknown>
-        return new HttpResponse(null, { status: 204 })
-      }),
-    )
-    const user = userEvent.setup()
+  it('says so when no cluster is configured', async () => {
+    serve([])
     renderWithProviders(<AdminClustersPage />)
-    await screen.findByText('Not configured')
 
-    await user.type(screen.getByLabelText('Endpoint'), 'https://incus-sg:8443')
-    await user.type(screen.getByLabelText('Server fingerprint'), PIN)
-    await user.click(screen.getByRole('button', { name: 'Save' }))
-
-    await waitFor(() => expect(body).not.toBeNull())
-    expect(body).toEqual({ name: 'singapore01', endpoint: 'https://incus-sg:8443', serverFingerprint: PIN })
-    await waitFor(() => expect(listReads).toBeGreaterThan(1))
-    await waitFor(() => expect(screen.getByText('Saved')).toBeInTheDocument())
+    expect(await screen.findByText('No cluster is configured.')).toBeInTheDocument()
   })
 
-  it('keeps Save off until both endpoint and server fingerprint are given', async () => {
-    serve([notConfigured()])
-    const user = userEvent.setup()
-    renderWithProviders(<AdminClustersPage />)
-    await screen.findByText('Not configured')
-
-    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled()
-    await user.type(screen.getByLabelText('Endpoint'), 'https://incus-sg:8443')
-    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled()
-    await user.type(screen.getByLabelText('Server fingerprint'), PIN)
-    expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled()
-  })
-
-  it('surfaces the error code when the save is rejected', async () => {
-    serve([cluster()])
-    server.use(http.put('*/v1/admin/clusters/mock', () =>
-      HttpResponse.json({ status: 400, title: 'Endpoint must be an https:// URL.', code: 'VALIDATION_ERROR' }, { status: 400 })))
-    const user = userEvent.setup()
-    renderWithProviders(<AdminClustersPage />)
-    await waitFor(() => expect(screen.getByDisplayValue(PIN)).toBeInTheDocument())
-
-    await user.click(screen.getByRole('button', { name: 'Save' }))
-
-    await waitFor(() => expect(screen.getByText('VALIDATION_ERROR — Endpoint must be an https:// URL.')).toBeInTheDocument())
-  })
-
-  it('tests the connection with the endpoint and fingerprint on screen', async () => {
+  it('tests the connection with the configured endpoint and fingerprint', async () => {
     let body: Record<string, unknown> | null = null
     serve([cluster()])
     server.use(http.post('*/v1/admin/clusters/test', async ({ request }) => {
@@ -149,98 +108,36 @@ describe('AdminClustersPage', () => {
     }))
     const user = userEvent.setup()
     renderWithProviders(<AdminClustersPage />)
-    await waitFor(() => expect(screen.getByDisplayValue(PIN)).toBeInTheDocument())
 
-    await user.clear(screen.getByLabelText('Endpoint'))
-    await user.type(screen.getByLabelText('Endpoint'), 'https://edited:8443')
-    await user.click(screen.getByRole('button', { name: 'Test connection' }))
+    await user.click(await screen.findByRole('button', { name: 'Test connection' }))
 
     await waitFor(() => expect(screen.getByText(/Connected · 24ms/)).toBeInTheDocument())
-    expect(body).toEqual({ endpoint: 'https://edited:8443', serverFingerprint: PIN })
+    expect(body).toEqual({ endpoint: 'https://localhost:8443', serverFingerprint: PIN })
   })
 
   it('shows the whole error when the cluster does not trust Titan', async () => {
-    const error = `The cluster at https://incus-stub:8443 does not trust Titan: add Titan's client certificate (fingerprint ${TITAN_FINGERPRINT}) to its trust store.`
+    const error = `The cluster at https://localhost:8443 does not trust Titan: add Titan's client certificate (fingerprint ${TITAN_FINGERPRINT}) to its trust store.`
     serve([cluster()])
     server.use(http.post('*/v1/admin/clusters/test', () => HttpResponse.json({ ok: false, error })))
     const user = userEvent.setup()
     renderWithProviders(<AdminClustersPage />)
-    await waitFor(() => expect(screen.getByDisplayValue(PIN)).toBeInTheDocument())
 
-    await user.click(screen.getByRole('button', { name: 'Test connection' }))
+    await user.click(await screen.findByRole('button', { name: 'Test connection' }))
 
     const status = await screen.findByRole('status')
     expect(status).toHaveTextContent(`Failed: ${error}`)
   })
 
-  it('offers Delete only for a saved zone', async () => {
-    serve([cluster(), notConfigured()])
-    renderWithProviders(<AdminClustersPage />)
-
-    const saved = await screen.findByRole('form', { name: 'Cluster mock' })
-    const none = screen.getByRole('form', { name: 'Cluster singapore01' })
-    expect(within(saved).getByRole('button', { name: 'Delete' })).toBeInTheDocument()
-    expect(within(none).getByText('Not configured')).toBeInTheDocument()
-    expect(within(none).queryByRole('button', { name: 'Delete' })).not.toBeInTheDocument()
-  })
-
-  it('deletes a saved zone only after its cluster name is typed', async () => {
-    let deletedZone: string | null = null
-    serve([cluster()])
-    server.use(http.delete('*/v1/admin/clusters/mock', () => {
-      deletedZone = 'mock'
-      return new HttpResponse(null, { status: 204 })
-    }))
-    const user = userEvent.setup()
-    renderWithProviders(<AdminClustersPage />)
-    await user.click(await screen.findByRole('button', { name: 'Delete' }))
-
-    const confirm = screen.getByRole('button', { name: 'Delete connection' })
-    expect(confirm).toBeDisabled()
-    expect(screen.getByText(/has no cluster until one is saved again/)).toBeInTheDocument()
-    await user.type(screen.getByLabelText(/Type the cluster name/i), 'incus-stub')
-    expect(confirm).toBeEnabled()
-    await user.click(confirm)
-
-    await waitFor(() => expect(deletedZone).toBe('mock'))
-  })
-
-  // The list is read again after a delete; the form must show the zone as it now is, not the deleted values —
-  // otherwise Save stays enabled and one click registers the deleted cluster again.
-  it('clears the form once the deleted zone reads back as not configured', async () => {
-    let deleted = false
-    server.use(
-      http.get('*/v1/admin/clusters', () =>
-        HttpResponse.json([deleted ? cluster({ id: null, name: 'mock', endpoint: '', serverFingerprint: '', source: 'none', createdAt: null, updatedAt: null }) : cluster()])),
-      http.get('*/v1/admin/clusters/client-certificate', () =>
-        HttpResponse.json({ certificatePem: TITAN_PEM, fingerprint: TITAN_FINGERPRINT })),
-      http.delete('*/v1/admin/clusters/mock', () => {
-        deleted = true
-        return new HttpResponse(null, { status: 204 })
-      }),
-    )
-    const user = userEvent.setup()
-    renderWithProviders(<AdminClustersPage />)
-    await user.click(await screen.findByRole('button', { name: 'Delete' }))
-    await user.type(screen.getByLabelText(/Type the cluster name/i), 'incus-stub')
-    await user.click(screen.getByRole('button', { name: 'Delete connection' }))
-
-    await screen.findByText('Not configured')
-    expect(screen.getByLabelText('Endpoint')).toHaveValue('')
-    expect(screen.getByLabelText('Server fingerprint')).toHaveValue('')
-    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled()
-  })
-
   it('renders in Vietnamese', async () => {
-    serve([cluster(), notConfigured()])
+    serve([cluster({ providerSettings: { ovnUplinkNetwork: null, storagePool: null, ipv6Block: null } })])
     renderWithProviders(<AdminClustersPage />, { lang: 'vi' })
 
     expect(screen.getByRole('heading', { level: 1, name: 'Cluster' })).toBeInTheDocument()
     const block = await screen.findByRole('region', { name: 'Chứng chỉ client của Titan' })
     expect(await within(block).findByRole('button', { name: 'Sao chép chứng chỉ' })).toBeInTheDocument()
-    const none = await screen.findByRole('form', { name: 'Cluster singapore01' })
-    expect(within(none).getByText('Chưa cấu hình')).toBeInTheDocument()
-    expect(within(none).getByLabelText('Fingerprint máy chủ')).toBeInTheDocument()
-    expect(within(none).getByRole('button', { name: 'Kiểm tra kết nối' })).toBeInTheDocument()
+    const sg = await screen.findByRole('region', { name: 'Cluster singapore01' })
+    expect(within(sg).getByText('Fingerprint máy chủ')).toBeInTheDocument()
+    expect(within(sg).getAllByText('Chưa đặt').length).toBe(3)
+    expect(within(sg).getByRole('button', { name: 'Kiểm tra kết nối' })).toBeInTheDocument()
   })
 })
