@@ -1,6 +1,7 @@
 import { test, expect, type Page } from '@playwright/test'
+import { hostPattern, requiredHost } from './hosts'
 
-// Stage-3 staging UI regression — CQRS-2 / docs/architecture/http-contract.md#create-returns-id, admin side (2026-09-22).
+// UI regression — CQRS-2 / docs/architecture/http-contract.md#create-returns-id, admin side (2026-09-22).
 //
 // POST /v1/admin/topups/grant used to return the whole TopUpDto, and the admin hook mapped that
 // response into a PromotionalCredit row. After docs/architecture/http-contract.md#create-returns-id it answers with `{ topUpId }` alone, so the
@@ -13,7 +14,7 @@ import { test, expect, type Page } from '@playwright/test'
 // Grant target is `admin-test` — deliberately NOT beta-user, whose 509.842 ₫ balance is the oracle
 // other specs assert against. A grant is permanent (refund is manual, docs/architecture/money-and-wallet.md#credit-is-money), so known-state.md
 // is updated after this run.
-const ADMIN_HOST = process.env.ADMIN_BASE_URL || 'https://admin-titan-staging.openvicloud.com'
+const ADMIN_HOST = requiredHost('ADMIN_BASE_URL')
 const USERNAME = process.env.ADMIN_TEST_USERNAME || 'admin-test'
 const PASSWORD = process.env.ADMIN_TEST_PASSWORD
 const EVIDENCE = process.env.RESULTS_DIR || 'test-results/evidence'
@@ -33,7 +34,7 @@ async function login(page: Page) {
   await username.fill(USERNAME)
   await page.locator('#password, input[name="password"]').first().fill(PASSWORD!)
   await page.locator('#kc-login, button[type="submit"], input[type="submit"]').first().click()
-  await page.waitForURL(/admin-titan-staging\.openvicloud\.com/, { timeout: 45_000 })
+  await page.waitForURL(hostPattern(requiredHost('ADMIN_BASE_URL')), { timeout: 45_000 })
   await page.getByRole('navigation').or(page.getByRole('heading').first()).first()
     .waitFor({ state: 'visible', timeout: 45_000 })
 }
@@ -42,7 +43,7 @@ test.beforeAll(() => {
   if (!PASSWORD) {
     throw new Error(
       'ADMIN_TEST_PASSWORD is not set. Inject at run time:\n' +
-      "  ADMIN_TEST_PASSWORD=$(kubectl -n titan-auth-staging get secret admin-test-credentials " +
+      "  ADMIN_TEST_PASSWORD=$(kubectl -n titan-auth-<env> get secret admin-test-credentials " +
       "-o jsonpath='{.data.password}' | base64 -d) npx playwright test",
     )
   }

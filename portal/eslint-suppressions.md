@@ -34,7 +34,7 @@ dòng nào** ở code runtime của khách.
 ### `@typescript-eslint/no-explicit-any` — 0 (rời repo)
 
 Ba script seed/cleanup mang 33 dòng này (`e2e/pay-seed.spec.ts`, `e2e/seed-usage.spec.ts`, `e2e/cleanup.spec.ts`)
-chỉ chạy trên host portal khách, nên đã theo portal khách sang OpenViCloud/titan-cloud-console.
+chỉ chạy trên host portal khách, nên đã theo portal khách sang OpenViCloud/titan-cloud-console (ở đó gỡ hai spec seed 2026-10-28).
 
 ### `react-refresh/only-export-components` — 5, ở `src/`
 
