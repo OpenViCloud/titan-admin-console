@@ -1,6 +1,7 @@
 import { test, expect, type Page } from '@playwright/test'
+import { hostPattern, requiredHost } from './hosts'
 
-// Stage-3 staging UI regression — docs/architecture/money-and-wallet.md#single-writer-outbox S7, ADMIN surface (2026-09-21).
+// UI regression — docs/architecture/money-and-wallet.md#single-writer-outbox S7, ADMIN surface (2026-09-21).
 //
 // Why the admin table needs its own run, and why it is the heavier of the two: an admin settling
 // from a tenant's wallet spends SOMEONE ELSE'S money (docs/architecture/money-and-wallet.md#human-confirmed-debit PAY-5). Before S7 this table left BOTH
@@ -11,7 +12,7 @@ import { test, expect, type Page } from '@playwright/test'
 //
 // The admin table also has its own copy of the rule (a local `terminal()`, not lib/invoice's
 // isPayable), so a fix to the tenant path proves nothing here.
-const ADMIN_HOST = process.env.ADMIN_BASE_URL || 'https://admin-titan-staging.openvicloud.com'
+const ADMIN_HOST = requiredHost('ADMIN_BASE_URL')
 const USERNAME = process.env.ADMIN_TEST_USERNAME || 'admin-test'
 const PASSWORD = process.env.ADMIN_TEST_PASSWORD
 
@@ -22,7 +23,7 @@ const EVIDENCE = process.env.RESULTS_DIR || 'test-results/evidence'
 const PERIOD = process.env.ADMIN_TEST_INVOICE_PERIOD || '2026-06'
 
 async function login(page: Page) {
-  // 'domcontentloaded': the staging edge is intermittently slow on secondary assets, and waiting on
+  // 'domcontentloaded': the edge is intermittently slow on secondary assets, and waiting on
   // every one of them turns a slow CDN into a false failure of the screen.
   await page.goto(ADMIN_HOST + '/', { waitUntil: 'domcontentloaded' })
   const signIn = page.getByRole('button', { name: /sign in|log ?in|đăng nhập/i }).first()
@@ -36,7 +37,7 @@ async function login(page: Page) {
 
   // Waiting for the URL alone only proves the OAuth redirect landed; the SPA still has to exchange
   // the code and mount. Wait for rendered chrome so the next navigation is reliable.
-  await page.waitForURL(/admin-titan-staging\.openvicloud\.com/, { timeout: 45_000 })
+  await page.waitForURL(hostPattern(requiredHost('ADMIN_BASE_URL')), { timeout: 45_000 })
   await page.getByRole('link').first().waitFor({ state: 'visible', timeout: 45_000 })
 }
 
@@ -44,7 +45,7 @@ test.beforeAll(() => {
   if (!PASSWORD) {
     throw new Error(
       'ADMIN_TEST_PASSWORD is not set. Inject at run time:\n' +
-        "  ADMIN_TEST_PASSWORD=$(kubectl -n titan-auth-staging get secret admin-test-credentials -o jsonpath='{.data.password}' | base64 -d) npx playwright test wallet-pending-ux-admin",
+        "  ADMIN_TEST_PASSWORD=$(kubectl -n titan-auth-<env> get secret admin-test-credentials -o jsonpath='{.data.password}' | base64 -d) npx playwright test wallet-pending-ux-admin",
     )
   }
 })

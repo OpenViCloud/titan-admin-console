@@ -1,12 +1,13 @@
 import { test, expect, type Page, type BrowserContext } from '@playwright/test'
+import { requiredHost } from './hosts'
 
-// Stage-3 staging regression for docs/architecture/money-and-wallet.md#price-belongs-to-offering (regression-plan U-1…U-9): price now lives on the offering,
+// Regression for docs/architecture/money-and-wallet.md#price-belongs-to-offering (regression-plan U-1…U-9): price now lives on the offering,
 // and the admin edits it on the row that shows the product.
 //
 // Stage 2 already proved the BACKEND half against the live database (schema, prices, /healthz, the
 // old endpoint returning 404). None of that says the screen renders the right number or that Save
 // works, which is the only thing this file measures.
-const ADMIN_URL = process.env.ADMIN_BASE_URL || 'https://admin-titan-staging.openvicloud.com'
+const ADMIN_URL = requiredHost('ADMIN_BASE_URL')
 const ADMIN_USER = process.env.ADMIN_TEST_USERNAME || 'admin-test'
 const ADMIN_PASSWORD = process.env.ADMIN_TEST_PASSWORD
 
@@ -29,7 +30,7 @@ test.beforeAll(() => {
   if (!ADMIN_PASSWORD) {
     throw new Error(
       'Missing ADMIN_TEST_PASSWORD. Inject it from the k8s secret at run time:\n' +
-      '  ADMIN_TEST_PASSWORD=$(kubectl -n titan-auth-staging get secret admin-test-credentials ' +
+      '  ADMIN_TEST_PASSWORD=$(kubectl -n titan-auth-<env> get secret admin-test-credentials ' +
       "-o jsonpath='{.data.password}' | base64 -d) npx playwright test")
   }
 })
@@ -116,9 +117,9 @@ test('U-5/U-9 — dialog rejects a non-positive price in words, and previews the
 
 // ── U-4/U-6/U-8 — change the price, read the trail, put it back ────────────
 //
-// Path D (regression-plan): this edits a REAL selling price on staging, then restores the approved
-// one. Staging has 0 VMs, so the window carries zero billing impact — and the audit table keeps both
-// rows, which is append-only working as designed, not litter.
+// Path D (regression-plan): this edits a REAL selling price on the environment it runs on, then restores the
+// approved one. Run it only where no VM is billed during the window; the audit table keeps both rows, which is
+// append-only working as designed, not litter.
 test('U-4/U-6/U-8 — price change lands without reload, is audited, and is restored', async ({ browser }) => {
   const context = await browser.newContext()
   const page = await adminPage(context)
@@ -155,7 +156,7 @@ test('U-4/U-6/U-8 — price change lands without reload, is audited, and is rest
   await page.screenshot({ path: `${EVIDENCE}/audit-price-change-pass.png`, fullPage: true })
 
   // U-8 — put the approved price back. In the same test as U-4 on purpose: a separate test could be
-  // skipped or fail to start, leaving staging selling at a number nobody approved.
+  // skipped or fail to start, leaving the environment selling at a number nobody approved.
   await openCatalog(page)
   await page.getByRole('button', { name: /edit price for medium/i }).click()
   await page.getByLabel(/price \(₫ per hour\)/i).fill('311.256')
