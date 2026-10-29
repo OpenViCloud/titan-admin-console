@@ -4,10 +4,10 @@ import { api } from '@/lib/api'
 import { pollWhileASyncWaits } from '@/lib/templateState'
 
 // Shape mirrors AdminTemplateQueryResult (control-plane). GET /v1/admin/templates returns EVERY template with its
-// internal sync per cluster — unlike the customer GET /v1/templates (docs/features/catalog/design.md#template-per-cluster):
+// internal sync per cluster — unlike the customer GET /v1/templates (titan-ops features/catalog/design.md#template-per-cluster):
 // each cluster holds its own image alias, so a template can be there in one cluster and not in another.
 
-// Mirrors AdminTemplateClusterQueryResult (docs/features/catalog/design.md#template-state-is-existence).
+// Mirrors AdminTemplateClusterQueryResult (titan-ops features/catalog/design.md#template-state-is-existence).
 export interface AdminTemplateCluster {
   clusterId: string
   currentExistence: 'NotCreated' | 'Exists' | 'NotFound'
@@ -24,7 +24,7 @@ export interface AdminTemplate {
   name: string
   description: string | null
   os: string
-  // docs/features/catalog/design.md#template-borrows-sizing — the tier this template borrows its base sizing from. Not a size itself: resolve it
+  // titan-ops features/catalog/design.md#template-borrows-sizing — the tier this template borrows its base sizing from. Not a size itself: resolve it
   // against the offerings this page already loads, so one catalog defines what "m" means.
   vmOfferingId: string
   diskGb: number | null
@@ -49,7 +49,7 @@ export function useTemplatesCatalog() {
   })
 }
 
-// POST .../sync answers 202 with no body (docs/architecture/http-contract.md#commands-return-no-data, CQRS-5 D-5): the sync is enqueued, not done. The
+// POST .../sync answers 202 with no body (titan-ops architecture/http-contract.md#commands-return-no-data, CQRS-5 D-5): the sync is enqueued, not done. The
 // outcome is read back from the template list, which is why success re-fetches it.
 export function useSyncTemplates() {
   const qc = useQueryClient()
@@ -59,7 +59,7 @@ export function useSyncTemplates() {
   })
 }
 
-// ── Offerings (docs/architecture/money-and-wallet.md#price-belongs-to-offering) ─────────────────────────────────────────────────────
+// ── Offerings (titan-ops architecture/money-and-wallet.md#price-belongs-to-offering) ─────────────────────────────────────────────────────
 // Price lives on the offering now, so the catalog page reads it from the same rows it already shows
 // tiers from. These are the customer-facing endpoints (not /v1/admin/*) — an admin sees exactly the
 // prices a customer sees, which is the point of putting them on the product.
@@ -101,7 +101,7 @@ export function useUpdateVmOfferingPrice() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: ({ id, pricePerHour }: { id: string; pricePerHour: number }) =>
-      // docs/architecture/http-contract.md#commands-return-no-data: 204 with no body.
+      // titan-ops architecture/http-contract.md#commands-return-no-data: 204 with no body.
       api.patch(`/v1/admin/vm-offerings/${id}/price`, { pricePerHour }),
     // Invalidate rather than write into the cache: the price also drives what customers are quoted,
     // so a refetch is the honest thing to show after a change.

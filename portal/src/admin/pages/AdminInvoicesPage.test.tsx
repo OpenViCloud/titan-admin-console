@@ -57,7 +57,7 @@ describe('AdminInvoicesPage', () => {
       http.get('*/v1/admin/invoices', () => HttpResponse.json([invoice()])),
       http.patch('*/v1/admin/invoices/i1/pay', () => {
         hit = true
-        return new HttpResponse(null, { status: 204 }) // docs/architecture/http-contract.md#commands-return-no-data
+        return new HttpResponse(null, { status: 204 }) // titan-ops architecture/http-contract.md#commands-return-no-data
       }),
     )
     renderWithProviders(<AdminInvoicesPage />)
@@ -97,7 +97,7 @@ describe('AdminInvoicesPage', () => {
   })
 })
 
-// ── docs/architecture/money-and-wallet.md#human-confirmed-debit PAY-5 — admin settles from the tenant's wallet ─────────────────
+// ── titan-ops architecture/money-and-wallet.md#human-confirmed-debit PAY-5 — admin settles from the tenant's wallet ─────────────────
 //
 // Two buttons that must never be confused: "Mark paid" records money that arrived OUTSIDE Titan and
 // touches no wallet; "Settle from wallet" spends the customer's credit. Mixing them up either takes a
@@ -123,7 +123,7 @@ describe('AdminInvoicesPage — settle from wallet vs mark paid', () => {
     server.use(
       http.post('*/v1/admin/invoices/:id/settle-from-wallet', ({ params }) => {
         hits.push(`settle:${params.id}`)
-        return new HttpResponse(null, { status: 202 }) // docs/architecture/http-contract.md#async-actions-return-202
+        return new HttpResponse(null, { status: 202 }) // titan-ops architecture/http-contract.md#async-actions-return-202
       }),
       http.patch('*/v1/admin/invoices/:id/pay', ({ params }) => {
         hits.push(`markpaid:${params.id}`)
@@ -160,7 +160,7 @@ describe('AdminInvoicesPage — settle from wallet vs mark paid', () => {
   })
 })
 
-// docs/architecture/money-and-wallet.md#single-writer-outbox S7 / AC-S7.4 — an admin spends the TENANT'S wallet (docs/architecture/money-and-wallet.md#human-confirmed-debit PAY-5). Since S5 the settle
+// titan-ops architecture/money-and-wallet.md#single-writer-outbox S7 / AC-S7.4 — an admin spends the TENANT'S wallet (titan-ops architecture/money-and-wallet.md#human-confirmed-debit PAY-5). Since S5 the settle
 // request returns 202 with the debit still in flight, so a row can sit there looking unpaid while
 // money is already moving. Both buttons have to be off in that window, and for different reasons:
 // settling twice debits the wallet twice, and marking paid on top of a wallet payment destroys the

@@ -9,8 +9,8 @@ export interface AuditLogEntry {
   resourceId: string
   ownerTenantId: string
   createdAt: string
-  // docs/architecture/money-and-wallet.md#price-belongs-to-offering — set for string-keyed resources (catalog offering slugs) and the change they carry.
-  // Null on every row written before docs/architecture/money-and-wallet.md#price-belongs-to-offering and on every GUID-keyed resource.
+  // titan-ops architecture/money-and-wallet.md#price-belongs-to-offering — set for string-keyed resources (catalog offering slugs) and the change they carry.
+  // Null on every row written before titan-ops architecture/money-and-wallet.md#price-belongs-to-offering and on every GUID-keyed resource.
   resourceKey: string | null
   detail: string | null
 }

@@ -1,4 +1,4 @@
-// English is the portal's default language (docs/features/cloud-console/design.md#portal-language).
+// English is the portal's default language (titan-ops features/cloud-console/design.md#portal-language).
 // vi.ts must have the same keys: its type is Messages, taken from this object.
 export const en = {
   common: {
@@ -393,7 +393,7 @@ export const en = {
     requestFailed: 'the request failed',
     restoreTitle: 'Restoring',
     restoreBody: 'A database restore runs outside this console, from the disaster recovery runbook.',
-    runbookLink: 'Disaster recovery runbook',
+    runbookName: 'Disaster recovery runbook',
   },
   adminClusters: {
     title: 'Clusters',

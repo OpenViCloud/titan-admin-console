@@ -57,7 +57,7 @@ export interface GrantPromotionalCreditInput {
   reason: string | null
 }
 
-// docs/architecture/http-contract.md#create-returns-id: the grant answers with the id it just minted and nothing else. The page never read the
+// titan-ops architecture/http-contract.md#create-returns-id: the grant answers with the id it just minted and nothing else. The page never read the
 // returned row — it shows the grant through the history query below — so invalidating that query is
 // what puts the new grant on screen.
 export interface GrantPromotionalCreditResult {
@@ -66,7 +66,7 @@ export interface GrantPromotionalCreditResult {
 
 export function useGrantPromotionalCredit() {
   const qc = useQueryClient()
-  const withKey = useIdempotencyKey() // docs/architecture/http-contract.md#idempotency-key: one key per submission
+  const withKey = useIdempotencyKey() // titan-ops architecture/http-contract.md#idempotency-key: one key per submission
   return useMutation({
     mutationFn: (input: GrantPromotionalCreditInput) =>
       withKey(headers => api.post<GrantPromotionalCreditResult>('/v1/admin/topups/grant', input, { headers }).then(r => r.data)),

@@ -94,7 +94,7 @@ describe('AdminPromotionalCreditsPage', () => {
     await waitFor(() => expect(body).toEqual({ tenantId: 't1', amount: 500000, reason: 'welcome' }))
   })
 
-  // docs/features/cloud-console/design.md#portal-language — 500.000 is five hundred thousand đồng, the way the page shows it.
+  // titan-ops features/cloud-console/design.md#portal-language — 500.000 is five hundred thousand đồng, the way the page shows it.
   it('grants the amount typed with a grouping mark', async () => {
     let body: unknown = null
     stub([])
@@ -114,7 +114,7 @@ describe('AdminPromotionalCreditsPage', () => {
     await waitFor(() => expect(body).toEqual({ tenantId: 't1', amount: 500000, reason: null }))
   })
 
-  // docs/features/billing/topup/design.md — the manual path for a transfer the webhook did not match.
+  // titan-ops features/billing/topup/design.md — the manual path for a transfer the webhook did not match.
   it('lists a pending top-up with its tenant, amount and reference', async () => {
     stub([credit()], [tenant()], [credit(), pendingTopUp()])
     renderWithProviders(<AdminPromotionalCreditsPage />)

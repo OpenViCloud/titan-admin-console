@@ -20,7 +20,7 @@ import { parseRate, rateInputValue } from '@/lib/money'
 // in their head moves the work onto the person the screen exists to help.
 const HOURS_PER_MONTH = 720
 
-// docs/architecture/money-and-wallet.md#price-belongs-to-offering — a product and its price belong on the same row. Before this, an admin who wanted to know
+// titan-ops architecture/money-and-wallet.md#price-belongs-to-offering — a product and its price belong on the same row. Before this, an admin who wanted to know
 // what tier "m" cost had to open /pricing, find a row keyed by the slug "m", then open the catalog to
 // learn that "m" means 2 vCPU / 4 GB, and hold the mapping in their head.
 export function OfferingsSection() {

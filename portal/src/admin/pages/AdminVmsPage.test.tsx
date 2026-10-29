@@ -50,7 +50,7 @@ describe('AdminVmsPage', () => {
     renderWithProviders(<AdminVmsPage />)
     await waitFor(() => expect(screen.getByText('web-1')).toBeInTheDocument())
     expect(screen.getByRole('button', { name: 'Delete' })).toBeInTheDocument()
-    // Delete-only per docs/architecture/tenancy-and-admin.md#admin-cross-tenant-write — stop is STOP-01 epic, not here.
+    // Delete-only per titan-ops architecture/tenancy-and-admin.md#admin-cross-tenant-write — stop is STOP-01 epic, not here.
     expect(screen.queryByRole('button', { name: /stop|start/i })).not.toBeInTheDocument()
   })
 

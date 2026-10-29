@@ -39,7 +39,7 @@ export function useUpdateTenantStatus() {
   })
 }
 
-// The nine caps of a tenant's quota (docs/architecture/tenancy-and-admin.md#tenant-quota), as GET /v1/tenants names them.
+// The nine caps of a tenant's quota (titan-ops architecture/tenancy-and-admin.md#tenant-quota), as GET /v1/tenants names them.
 export const QUOTA_CAPS = [
   'maxVms',
   'maxNetworks',
@@ -56,7 +56,7 @@ export type QuotaCap = typeof QUOTA_CAPS[number]
 export type TenantQuotaCaps = Record<QuotaCap, number>
 
 // B-A02 — platform-admin adjusts a tenant's resource caps. The dialog sends all nine; the backend also keeps any it
-// is not sent. It answers 204 with no body (docs/architecture/http-contract.md#commands-return-no-data), so we
+// is not sent. It answers 204 with no body (titan-ops architecture/http-contract.md#commands-return-no-data), so we
 // invalidate the list and the new quota shows without a reload.
 export function useUpdateTenantQuota() {
   const qc = useQueryClient()
@@ -67,7 +67,7 @@ export function useUpdateTenantQuota() {
   })
 }
 
-// docs/architecture/money-and-wallet.md#postpaid-no-brake — platform-admin sets a tenant's credit limit, or clears the override with null so it
+// titan-ops architecture/money-and-wallet.md#postpaid-no-brake — platform-admin sets a tenant's credit limit, or clears the override with null so it
 // follows the system default again. Same shape as quota: a create-time gate, so lowering it never
 // takes running resources away.
 export function useUpdateTenantDebtCeiling() {

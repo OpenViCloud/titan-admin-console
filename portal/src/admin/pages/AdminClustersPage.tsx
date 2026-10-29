@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button'
 import { useT } from '@/i18n/LanguageContext'
 import type { Messages } from '@/i18n/en'
 
-// docs/features/cluster/design.md#cluster-admin-page
+// titan-ops features/cluster/design.md#cluster-admin-page
 export function AdminClustersPage() {
   const t = useT()
   const { data: clusters, isLoading, isError } = useAdminClusters()
@@ -102,7 +102,7 @@ function ClientCertificateBlock() {
   )
 }
 
-// Read-only: a cluster is the control plane's configuration (docs/features/cluster/design.md#cluster-from-config).
+// Read-only: a cluster is the control plane's configuration (titan-ops features/cluster/design.md#cluster-from-config).
 function ClusterCard({ cluster }: { cluster: AdminCluster }) {
   const t = useT()
   const test = useTestClusterConnection()

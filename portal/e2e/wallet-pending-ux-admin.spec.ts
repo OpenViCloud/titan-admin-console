@@ -1,10 +1,10 @@
 import { test, expect, type Page } from '@playwright/test'
 import { hostPattern, requiredHost } from './hosts'
 
-// UI regression — docs/architecture/money-and-wallet.md#single-writer-outbox S7, ADMIN surface (2026-09-21).
+// UI regression — titan-ops architecture/money-and-wallet.md#single-writer-outbox S7, ADMIN surface (2026-09-21).
 //
 // Why the admin table needs its own run, and why it is the heavier of the two: an admin settling
-// from a tenant's wallet spends SOMEONE ELSE'S money (docs/architecture/money-and-wallet.md#human-confirmed-debit PAY-5). Before S7 this table left BOTH
+// from a tenant's wallet spends SOMEONE ELSE'S money (titan-ops architecture/money-and-wallet.md#human-confirmed-debit PAY-5). Before S7 this table left BOTH
 // buttons live while a debit was in flight, so an admin could press "Settle from wallet" (202) and
 // then "Mark paid" — and those two routes exist precisely to keep apart money that moved inside
 // Titan from money that arrived by bank transfer. Pressing one over the other destroys the audit

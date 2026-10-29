@@ -140,7 +140,7 @@ export function AdminPromotionalCreditsPage() {
   )
 }
 
-// docs/features/billing/topup/design.md — the manual fallback when the SePay webhook did not match a transfer: the admin
+// titan-ops features/billing/topup/design.md — the manual fallback when the SePay webhook did not match a transfer: the admin
 // checks the bank account, then confirms the top-up here (POST /v1/admin/topups/{id}/confirm).
 function PendingTopUps({ nameOf }: { nameOf: (tenantId: string) => string }) {
   const t = useT()

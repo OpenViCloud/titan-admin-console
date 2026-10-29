@@ -2,7 +2,7 @@ import { useMutation, useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 
 // Shapes mirror BackupsQueryResult, BackupTargetQueryResult and BackupTargetTestResult (control plane;
-// docs/features/backup/design.md). The control plane sends null, not an absent field, for what does not apply.
+// titan-ops features/backup/design.md). The control plane sends null, not an absent field, for what does not apply.
 export type BackupHealth = 'Ok' | 'Stale' | 'Missing' | 'Unknown'
 
 export interface BackupItem {

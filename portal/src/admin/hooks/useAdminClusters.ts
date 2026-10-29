@@ -2,7 +2,7 @@ import { useMutation, useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 
 // Shape mirrors AdminClusterDto (control-plane): a cluster as the control plane's configuration holds it
-// (docs/features/cluster/design.md#cluster-from-config). Null = not set.
+// (titan-ops features/cluster/design.md#cluster-from-config). Null = not set.
 export interface AdminCluster {
   clusterId: string
   name: string
@@ -28,7 +28,7 @@ export interface TestClusterInput {
 }
 
 // The public half only: the private key never leaves the control plane
-// (docs/features/cluster/design.md#provider-client-identity).
+// (titan-ops features/cluster/design.md#provider-client-identity).
 export interface ProviderClientCertificate {
   certificatePem: string
   fingerprint: string

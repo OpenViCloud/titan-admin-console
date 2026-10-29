@@ -8,7 +8,7 @@ import { OfferingsSection } from './OfferingsSection'
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() }, Toaster: () => null }))
 
-// Mirrors VmOfferingQueryResult / VolumeOfferingQueryResult after docs/architecture/money-and-wallet.md#price-belongs-to-offering — price included.
+// Mirrors VmOfferingQueryResult / VolumeOfferingQueryResult after titan-ops architecture/money-and-wallet.md#price-belongs-to-offering — price included.
 const vmTier = (o = {}) => ({
   id: 'm', name: 'Medium', cpu: 1, vcpu: 2, memoryMb: 4096, pricePerHour: 311.256, ...o,
 })
@@ -63,7 +63,7 @@ describe('OfferingsSection', () => {
       http.patch('*/v1/admin/vm-offerings/m/price', async ({ request }) => {
         const body = (await request.json()) as { pricePerHour: number }
         current = body.pricePerHour
-        return new HttpResponse(null, { status: 204 }) // docs/architecture/http-contract.md#commands-return-no-data: the list is re-read
+        return new HttpResponse(null, { status: 204 }) // titan-ops architecture/http-contract.md#commands-return-no-data: the list is re-read
       }),
     )
     renderWithProviders(<OfferingsSection />)
@@ -168,7 +168,7 @@ describe('OfferingsSection', () => {
     expect(screen.getByText(/720\.000\s*₫\/tháng/)).toBeInTheDocument()
   })
 
-  // docs/features/cloud-console/design.md#portal-language — a rate keeps decimals, and in Vietnamese the decimal mark is a
+  // titan-ops features/cloud-console/design.md#portal-language — a rate keeps decimals, and in Vietnamese the decimal mark is a
   // comma: the field starts the way the page shows the price and reads what the admin types the same way.
   it('reads a price typed with the Vietnamese decimal mark', async () => {
     let sent: unknown = null

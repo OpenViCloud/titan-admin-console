@@ -14,7 +14,7 @@ const tenant = (o = {}) => ({
   maxVolumes: 13, maxVmSnapshotsPerVm: 14, maxVolumeSnapshotsPerVolume: 15, maxFirewallRulesPerNetwork: 16,
   maxPublicIpv6: 17, maxSshKeys: 18, maxLoadBalancers: 19,
   createdAt: '2026-01-01T00:00:00Z',
-  // docs/architecture/money-and-wallet.md#postpaid-no-brake — null override = follows the system default (5.000.000 ₫ here).
+  // titan-ops architecture/money-and-wallet.md#postpaid-no-brake — null override = follows the system default (5.000.000 ₫ here).
   debtCeiling: 500000,
   ...o,
 })
@@ -57,7 +57,7 @@ describe('AdminTenantsPage', () => {
     expect(screen.getByRole('button', { name: 'Activate' })).toBeInTheDocument()
   })
 
-  // docs/architecture/tenancy-and-admin.md#approval-is-activation — a tenant has no provider account any more, so
+  // titan-ops architecture/tenancy-and-admin.md#approval-is-activation — a tenant has no provider account any more, so
   // there is no account column, badge or "Retry provisioning" to offer.
   it('shows no provider account and offers no retry', async () => {
     server.use(http.get('*/v1/tenants', () => HttpResponse.json([tenant()])))
@@ -122,7 +122,7 @@ describe('AdminTenantsPage', () => {
       http.get('*/v1/tenants', () => HttpResponse.json([tenant()])),
       http.patch('*/v1/tenants/t1/debt-ceiling', async ({ request }) => {
         patched = await request.json()
-        return new HttpResponse(null, { status: 204 }) // docs/architecture/http-contract.md#commands-return-no-data
+        return new HttpResponse(null, { status: 204 }) // titan-ops architecture/http-contract.md#commands-return-no-data
       }),
     )
     renderWithProviders(<AdminTenantsPage />)
@@ -176,7 +176,7 @@ describe('AdminTenantsPage', () => {
       http.get('*/v1/tenants', () => HttpResponse.json([tenant({ maxVms: 10, maxNetworks: 1 })])),
       http.patch('*/v1/tenants/t1/quota', async ({ request }) => {
         patched = await request.json()
-        return new HttpResponse(null, { status: 204 }) // docs/architecture/http-contract.md#commands-return-no-data
+        return new HttpResponse(null, { status: 204 }) // titan-ops architecture/http-contract.md#commands-return-no-data
       }),
     )
     renderWithProviders(<AdminTenantsPage />)
