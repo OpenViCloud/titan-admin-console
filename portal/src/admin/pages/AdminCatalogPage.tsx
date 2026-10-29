@@ -92,7 +92,7 @@ export function AdminCatalogPage() {
               <TableRow key={template.id}>
                 <TableCell>{template.name}</TableCell>
                 <TableCell>
-                  {/* One badge per cluster: each cluster syncs on its own (docs/features/catalog/design.md#template-per-cluster).
+                  {/* One badge per cluster: each cluster syncs on its own (titan-ops features/catalog/design.md#template-per-cluster).
                       None yet = no sync run has asked for it anywhere. */}
                   {template.clusters.length === 0 ? (
                     <span className="text-faint">—</span>

@@ -387,7 +387,7 @@ export const vi: Messages = {
     requestFailed: 'yêu cầu thất bại',
     restoreTitle: 'Khôi phục',
     restoreBody: 'Khôi phục cơ sở dữ liệu chạy ngoài console, theo runbook khôi phục sau thảm hoạ.',
-    runbookLink: 'Runbook khôi phục sau thảm hoạ',
+    runbookName: 'Runbook khôi phục sau thảm hoạ',
   },
   adminClusters: {
     title: 'Cluster',

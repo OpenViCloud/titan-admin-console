@@ -65,7 +65,7 @@ describe('AdminBackupsPage', () => {
     expect(screen.getByText('https://acct.r2.cloudflarestorage.com')).toBeInTheDocument()
   })
 
-  // docs/features/backup/design.md#incus-backup: one row per VM and volume Incus holds, under its tenant's name.
+  // titan-ops features/backup/design.md#incus-backup: one row per VM and volume Incus holds, under its tenant's name.
   it('shows each VM and volume with its tenant, its kind and its own reason', async () => {
     serve([
       postgres(),
@@ -159,15 +159,14 @@ describe('AdminBackupsPage', () => {
     expect(screen.queryByRole('link', { name: /restore now|download/i })).not.toBeInTheDocument()
   })
 
-  it('reminds that restoring runs outside the console, with the runbook', async () => {
+  it('reminds that restoring runs outside the console, naming the runbook without a link into private titan-ops', async () => {
     serve([postgres()])
     renderPage()
 
     const section = await screen.findByRole('region', { name: 'Restoring' })
     expect(section).toHaveTextContent('runs outside this console')
-    expect(within(section).getByRole('link', { name: 'Disaster recovery runbook' }))
-      .toHaveAttribute('href', expect.stringContaining('docs/infra/oci/runbook.md'))
-    expect(within(section).queryByRole('link', { name: /audit log/i })).not.toBeInTheDocument()
+    expect(section).toHaveTextContent('Disaster recovery runbook: titan-ops infra/oci/runbook.md#disaster-recovery')
+    expect(within(section).queryAllByRole('link')).toEqual([])
   })
 
   it('shows the target as text from the GitOps config: no field to type in, no Save, no secret', async () => {

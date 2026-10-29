@@ -3,7 +3,7 @@ import type { Lang } from '@/i18n/lang'
 import { cn } from '@/lib/utils'
 
 // The language choice on the admin 403 screen, shown before the admin shell: the account menu is not there
-// yet (docs/features/cloud-console/design.md#portal-language).
+// yet (titan-ops features/cloud-console/design.md#portal-language).
 export function LanguageSwitch({ className }: { className?: string }) {
   const { lang, setLang } = useLang()
   const t = useT()

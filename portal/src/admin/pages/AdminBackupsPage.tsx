@@ -18,10 +18,11 @@ import { ageOf } from '@/lib/age'
 import { formatBytes } from '@/lib/bytes'
 import { needsAttention, visibleItems } from '@/lib/backupFilter'
 
-// Where the restore steps live. The page only points at them: restoring runs outside the console.
-const RUNBOOK_URL = 'https://github.com/OpenViCloud/titan-ops/blob/main/docs/infra/oci/runbook.md'
+// Where the restore steps live. The page only names them: restoring runs outside the console, and the runbook is in
+// titan-ops, which is private, so a link would be a 404 for anyone without access to it.
+const RUNBOOK_REF = 'titan-ops infra/oci/runbook.md#disaster-recovery'
 
-// docs/features/backup/design.md#backups-page
+// titan-ops features/backup/design.md#backups-page
 export function AdminBackupsPage() {
   const t = useT()
   const { data, isLoading, isError } = useAdminBackups()
@@ -73,8 +74,8 @@ export function AdminBackupsPage() {
         <section aria-labelledby="backups-restore" className="rounded-lg border border-border p-4 space-y-2">
           <h2 id="backups-restore" className="text-sm font-medium text-foreground">{t.adminBackups.restoreTitle}</h2>
           <p className="text-sm text-muted-foreground">{t.adminBackups.restoreBody}</p>
-          <p className="text-sm flex flex-wrap gap-x-4 gap-y-1">
-            <a className="underline" href={RUNBOOK_URL} target="_blank" rel="noreferrer">{t.adminBackups.runbookLink}</a>
+          <p className="text-sm">
+            {t.adminBackups.runbookName}: <code className="font-mono text-xs">{RUNBOOK_REF}</code>
           </p>
         </section>
       </div>
@@ -133,7 +134,7 @@ function healthVariant(health: BackupHealth): 'success' | 'warning' | 'destructi
 function BackupTable({ items }: { items: BackupItem[] }) {
   const t = useT()
   const f = useFormat()
-  // VM and volume rows belong to a tenant (docs/features/backup/design.md#incus-backup); Postgres is the platform's.
+  // VM and volume rows belong to a tenant (titan-ops features/backup/design.md#incus-backup); Postgres is the platform's.
   const { data: tenants } = useAdminTenants()
   const tenantName = useMemo(() => {
     const m = new Map<string, string>()

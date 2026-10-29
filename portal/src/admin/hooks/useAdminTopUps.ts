@@ -26,7 +26,7 @@ export function useAdminPendingTopUps() {
 }
 
 // 202 with no body: the credit is queued for the wallet, not applied, when this returns
-// (docs/architecture/http-contract.md#async-actions-return-202). The list is read again to show it confirmed.
+// (titan-ops architecture/http-contract.md#async-actions-return-202). The list is read again to show it confirmed.
 export function useConfirmTopUp() {
   const qc = useQueryClient()
   return useMutation({

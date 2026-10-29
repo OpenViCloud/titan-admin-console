@@ -1,7 +1,7 @@
 import { test, expect, type Page, type BrowserContext } from '@playwright/test'
 import { requiredHost } from './hosts'
 
-// Regression for docs/architecture/money-and-wallet.md#price-belongs-to-offering (regression-plan U-1…U-9): price now lives on the offering,
+// Regression for titan-ops architecture/money-and-wallet.md#price-belongs-to-offering (regression-plan U-1…U-9): price now lives on the offering,
 // and the admin edits it on the row that shows the product.
 //
 // Stage 2 already proved the BACKEND half against the live database (schema, prices, /healthz, the
@@ -13,7 +13,7 @@ const ADMIN_PASSWORD = process.env.ADMIN_TEST_PASSWORD
 
 const EVIDENCE = process.env.RESULTS_DIR || 'test-results/evidence'
 
-// The approved price table (Tôn Chủ 2026-08-09, VND per docs/architecture/money-and-wallet.md#money-is-long-vnd) as the rate renders in
+// The approved price table (Tôn Chủ 2026-08-09, VND per titan-ops architecture/money-and-wallet.md#money-is-long-vnd) as the rate renders in
 // English, the default language: "." is the decimal separator, "," groups thousands. Written here as constants — the
 // oracle must not come from the page being checked.
 const APPROVED = {
@@ -142,7 +142,7 @@ test('U-4/U-6/U-8 — price change lands without reload, is audited, and is rest
   await expect(priceCell).toContainText(TEMP_RENDERED, { timeout: 20_000 })
 
   // U-6 — the trail has to answer all four halves: who, when, which tier, from what to what. The last
-  // two are why docs/architecture/money-and-wallet.md#price-belongs-to-offering widened admin_audit_log instead of writing "someone changed a price".
+  // two are why titan-ops architecture/money-and-wallet.md#price-belongs-to-offering widened admin_audit_log instead of writing "someone changed a price".
   await page.goto(`${ADMIN_URL}/audit-log`)
   await page.waitForLoadState('networkidle')
   const auditRow = page.getByRole('row').filter({ hasText: 'pricing.vm_offering.change' }).first()

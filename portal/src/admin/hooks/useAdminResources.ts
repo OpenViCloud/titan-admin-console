@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 
-// US-A08 — cross-tenant VM/Network read (docs/architecture/tenancy-and-admin.md#admin-cross-tenant-read). Not tenant-scoped: backend gates with
+// US-A08 — cross-tenant VM/Network read (titan-ops architecture/tenancy-and-admin.md#admin-cross-tenant-read). Not tenant-scoped: backend gates with
 // Roles("platform-admin") and returns every tenant's resources, each carrying tenantId. The
 // optional tenantId narrows server-side via A07's ?tenantId= filter (one refetch, not client slicing).
 
@@ -9,7 +9,7 @@ export interface AdminVm {
   id: string
   tenantId: string
   name: string
-  // docs/architecture/desired-and-current.md#provider-state-is-verbatim — see lib/vmState.ts
+  // titan-ops architecture/desired-and-current.md#provider-state-is-verbatim — see lib/vmState.ts
   currentState: string | null
   desiredState: string
   currentExistence: string
@@ -34,7 +34,7 @@ export interface AdminNetwork {
   name: string
   clusterId: string
   cidr: string | null
-  // docs/architecture/desired-and-current.md#provider-state-is-verbatim — see lib/networkState.ts
+  // titan-ops architecture/desired-and-current.md#provider-state-is-verbatim — see lib/networkState.ts
   currentState: string | null
   currentExistence: string
   desiredExistence: string
@@ -66,7 +66,7 @@ export function useAdminNetworks(tenantId?: string) {
   })
 }
 
-// B-A01 (docs/architecture/tenancy-and-admin.md#admin-cross-tenant-write) — cross-tenant DELETE, the only admin write. Invalidates the VM list so the
+// B-A01 (titan-ops architecture/tenancy-and-admin.md#admin-cross-tenant-write) — cross-tenant DELETE, the only admin write. Invalidates the VM list so the
 // deleted VM's status change shows. The type-the-name confirm guard lives in the page, not here.
 export function useDeleteAdminVm() {
   const qc = useQueryClient()

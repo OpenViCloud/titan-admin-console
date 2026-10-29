@@ -9,7 +9,7 @@ import { AdminCatalogPage } from './AdminCatalogPage'
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() }, Toaster: () => null }))
 
 // Mirrors AdminTemplateQueryResult (control-plane) — GET /v1/admin/templates returns every template with its
-// existence per cluster (docs/features/catalog/design.md#template-state-is-existence).
+// existence per cluster (titan-ops features/catalog/design.md#template-state-is-existence).
 const clusterState = (o = {}) => ({
   clusterId: 'mock', currentExistence: 'Exists', desiredExistence: 'Exists', transition: null,
   requestFailureReason: null, requestFailureDetail: null, requestFailedAt: null, externalTemplateId: 'tpl-205',
@@ -79,7 +79,7 @@ describe('AdminCatalogPage', () => {
     await waitFor(() => expect(screen.getByText('singapore01 · Available')).toBeInTheDocument(), { timeout: 6000 })
   }, 10000)
 
-  // docs/features/catalog/design.md#template-borrows-sizing — the Size cell shows the TIER the template points at, spelled out. The raw id "m"
+  // titan-ops features/catalog/design.md#template-borrows-sizing — the Size cell shows the TIER the template points at, spelled out. The raw id "m"
   // means nothing to an operator; "Medium — 2 vCPU · 4 GB" is the thing they can act on. Two
   // templates on two tiers, so a page that rendered one shared size contradicts one of the rows.
   it('renders each template size as the tier it points at, spelled out', async () => {

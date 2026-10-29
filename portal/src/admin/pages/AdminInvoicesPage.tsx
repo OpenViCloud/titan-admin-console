@@ -19,7 +19,7 @@ function statusVariant(status: string): 'success' | 'warning' | 'default' {
   return 'default'
 }
 
-// docs/architecture/money-and-wallet.md#single-writer-outbox S7 — what the admin should READ off the row. Showing the stored "New" while a debit is in
+// titan-ops architecture/money-and-wallet.md#single-writer-outbox S7 — what the admin should READ off the row. Showing the stored "New" while a debit is in
 // flight is accurate and useless: it reads as "the button did nothing".
 function statusLabel(inv: AdminInvoice): string {
   if (inv.paymentState === 'Failed') return 'Payment failed'
@@ -41,11 +41,11 @@ function isSettled(status: string): boolean {
 
 /// Both buttons are off once an invoice is settled either way — there is no second payment to make.
 ///
-/// docs/architecture/money-and-wallet.md#single-writer-outbox S7 — and also while a wallet debit for it is still being applied. `status` stays New in
+/// titan-ops architecture/money-and-wallet.md#single-writer-outbox S7 — and also while a wallet debit for it is still being applied. `status` stays New in
 /// that window (the money has not moved yet), so a check on status alone leaves BOTH buttons live
 /// on an invoice that is already being paid: pressing settle again debits the tenant's wallet twice,
 /// and pressing mark-paid records an outside payment over a wallet one, which is precisely the
-/// distinction the two routes exist to keep apart (docs/architecture/money-and-wallet.md#human-confirmed-debit).
+/// distinction the two routes exist to keep apart (titan-ops architecture/money-and-wallet.md#human-confirmed-debit).
 function terminal(inv: AdminInvoice) {
   return inv.status === 'Paid' || isSettled(inv.status) || isPaymentInFlight(inv.paymentState)
 }
@@ -81,7 +81,7 @@ export function AdminInvoicesPage() {
     })
   }
 
-  // docs/architecture/money-and-wallet.md#human-confirmed-debit PAY-5 — SPENDS THE TENANT'S WALLET, on their behalf. Only ever for a customer who asked
+  // titan-ops architecture/money-and-wallet.md#human-confirmed-debit PAY-5 — SPENDS THE TENANT'S WALLET, on their behalf. Only ever for a customer who asked
   // for it; the shortfall code is surfaced verbatim so an admin can tell them how much is missing.
   function settle(inv: AdminInvoice) {
     settleFromWallet.mutate(inv.id, {

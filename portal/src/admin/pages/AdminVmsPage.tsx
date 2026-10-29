@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/dialog'
 import { useT } from '@/i18n/LanguageContext'
 
-// US-A08 — cross-tenant VM view. B-A01 (docs/architecture/tenancy-and-admin.md#admin-cross-tenant-write): platform-admin may DELETE any tenant's VM
+// US-A08 — cross-tenant VM view. B-A01 (titan-ops architecture/tenancy-and-admin.md#admin-cross-tenant-write): platform-admin may DELETE any tenant's VM
 // (delete-only, no start/stop — STOP-01). Tenant column leads because "whose VM is this" is the point.
 // Keys are what vmLabel() returns: an Incus status, a waiting request's move, or why Incus has no status.
 function statusVariant(s: string): 'success' | 'warning' | 'destructive' | 'outline' {
@@ -118,7 +118,7 @@ export function AdminVmsPage() {
   )
 }
 
-// B-A01 (docs/architecture/tenancy-and-admin.md#admin-cross-tenant-write) — destructive confirm. Admin must type the VM's exact name to enable Delete;
+// B-A01 (titan-ops architecture/tenancy-and-admin.md#admin-cross-tenant-write) — destructive confirm. Admin must type the VM's exact name to enable Delete;
 // this guards against mis-clicks on an irreversible cross-tenant action. Not a security control
 // (backend gates by role) — a human guard.
 function DeleteVmDialog({ vm, tenantName, onClose }: { vm: AdminVm | null; tenantName: string; onClose: () => void }) {

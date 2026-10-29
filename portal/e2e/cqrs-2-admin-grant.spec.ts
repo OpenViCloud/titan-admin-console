@@ -1,10 +1,10 @@
 import { test, expect, type Page } from '@playwright/test'
 import { hostPattern, requiredHost } from './hosts'
 
-// UI regression — CQRS-2 / docs/architecture/http-contract.md#create-returns-id, admin side (2026-09-22).
+// UI regression — CQRS-2 / titan-ops architecture/http-contract.md#create-returns-id, admin side (2026-09-22).
 //
 // POST /v1/admin/topups/grant used to return the whole TopUpDto, and the admin hook mapped that
-// response into a PromotionalCredit row. After docs/architecture/http-contract.md#create-returns-id it answers with `{ topUpId }` alone, so the
+// response into a PromotionalCredit row. After titan-ops architecture/http-contract.md#create-returns-id it answers with `{ topUpId }` alone, so the
 // new grant can only reach the screen through the history query being invalidated and refetched.
 //
 // A unit test cannot show this: it would stub both the mutation and the query. What is being
@@ -12,7 +12,7 @@ import { hostPattern, requiredHost } from './hosts'
 // carries the row, and the page joins the two.
 //
 // Grant target is `admin-test` — deliberately NOT beta-user, whose 509.842 ₫ balance is the oracle
-// other specs assert against. A grant is permanent (refund is manual, docs/architecture/money-and-wallet.md#credit-is-money), so known-state.md
+// other specs assert against. A grant is permanent (refund is manual, titan-ops architecture/money-and-wallet.md#credit-is-money), so known-state.md
 // is updated after this run.
 const ADMIN_HOST = requiredHost('ADMIN_BASE_URL')
 const USERNAME = process.env.ADMIN_TEST_USERNAME || 'admin-test'

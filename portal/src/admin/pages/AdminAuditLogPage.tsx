@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge'
 import { useT, useFormat } from '@/i18n/LanguageContext'
 import type { Messages } from '@/i18n/en'
 
-// A price applies to every tenant, so docs/architecture/money-and-wallet.md#price-belongs-to-offering records those actions with no owning tenant. Printing
+// A price applies to every tenant, so titan-ops architecture/money-and-wallet.md#price-belongs-to-offering records those actions with no owning tenant. Printing
 // the raw value would show an all-zero GUID, which reads as a tenant that does not exist rather than
 // as the absence of one.
 const NO_TENANT = '00000000-0000-0000-0000-000000000000'

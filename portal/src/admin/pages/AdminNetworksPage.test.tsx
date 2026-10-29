@@ -42,7 +42,7 @@ describe('AdminNetworksPage', () => {
     expect(screen.getByRole('cell', { name: 'Created' })).toBeInTheDocument()
   })
 
-  // A give-up's raw error is admin-only (docs/architecture/desired-and-current.md#request-failure): the badge
+  // A give-up's raw error is admin-only (titan-ops architecture/desired-and-current.md#request-failure): the badge
   // says why, its title carries the detail.
   it('shows a failed create as Failed, with the reason and the raw detail on the badge', async () => {
     server.use(
