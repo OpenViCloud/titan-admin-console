@@ -25,7 +25,7 @@ import { useT } from '@/i18n/LanguageContext'
 function statusVariant(s: string): 'success' | 'warning' | 'destructive' | 'outline' {
   if (s === 'Running' || s === 'Ready') return 'success'
   if (s === 'Error' || s === 'Not found' || s === 'Failed') return 'destructive'
-  if (s === 'Stopped' || s === 'Frozen' || s === 'Stopping' || s === 'Deleting') return 'warning'
+  if (s === 'Stopped' || s === 'Frozen' || s === 'Stopping' || s === 'Deleting' || s === 'Snapshotting') return 'warning'
   return 'outline'
 }
 
