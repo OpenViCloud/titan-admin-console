@@ -9,12 +9,8 @@ export interface AdminVm {
   id: string
   tenantId: string
   name: string
-  // titan-ops architecture/desired-and-current.md#provider-state-is-verbatim — see lib/vmState.ts
-  currentState: string | null
-  desiredState: string
-  currentExistence: string
-  desiredExistence: string
-  transition: string | null
+  // One status, see lib/vmState.ts; the admin API sends it as a plain string.
+  status: string
   ipAddress: string | null
   networkId: string
   vmOfferingId: string

@@ -21,7 +21,7 @@ import { useT } from '@/i18n/LanguageContext'
 
 // US-A08 — cross-tenant VM view. B-A01 (titan-ops architecture/tenancy-and-admin.md#admin-cross-tenant-write): platform-admin may DELETE any tenant's VM
 // (delete-only, no start/stop — STOP-01). Tenant column leads because "whose VM is this" is the point.
-// Keys are what vmLabel() returns: an Incus status, a waiting request's move, or why Incus has no status.
+// Keys are what vmLabel() returns: the VM's status, NotFound spelled 'Not found'.
 function statusVariant(s: string): 'success' | 'warning' | 'destructive' | 'outline' {
   if (s === 'Running' || s === 'Ready') return 'success'
   if (s === 'Error' || s === 'Not found' || s === 'Failed') return 'destructive'
