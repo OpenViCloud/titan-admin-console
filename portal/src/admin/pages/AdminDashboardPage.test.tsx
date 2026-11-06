@@ -17,9 +17,8 @@ const tenant = (o = {}) => ({
   createdAt: '2026-01-01T00:00:00Z', ...o,
 })
 const vm = (o = {}) => ({
-  id: 'v1', tenantId: 't1', name: 'web', currentState: 'Running', desiredState: 'Running', transition: null as string | null, ipAddress: null, networkId: 'n1',
+  id: 'v1', tenantId: 't1', name: 'web', status: 'Running', ipAddress: null, networkId: 'n1',
   vmOfferingId: 'm', templateId: 'tpl', clusterId: 'z', createdAt: '2026-01-01T00:00:00Z',
-  currentExistence: 'Exists', desiredExistence: 'Exists',
   requestFailureReason: null as string | null, requestFailureDetail: null as string | null, requestFailedAt: null as string | null, ...o,
 })
 const invoice = (o = {}) => ({
@@ -55,7 +54,7 @@ describe('AdminDashboardPage', () => {
         tenant({ id: 't2', name: 'bob', status: 'Active' }),
         tenant({ id: 't3', name: 'cara', status: 'Suspended' }),
       ],
-      vms: [vm(), vm({ id: 'v2', currentState: 'Ready' }), vm({ id: 'v3', currentState: 'Stopped', desiredState: 'Stopped' })],
+      vms: [vm(), vm({ id: 'v2', status: 'Ready' }), vm({ id: 'v3', status: 'Stopped' })],
       invoices: [
         invoice({ total: 100000 }),
         invoice({ id: 'i2', total: 42500 }),

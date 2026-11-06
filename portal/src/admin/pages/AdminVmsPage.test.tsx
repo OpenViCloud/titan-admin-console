@@ -7,9 +7,9 @@ import { renderWithProviders } from '@/test/renderWithProviders'
 import { AdminVmsPage } from './AdminVmsPage'
 
 const vm = (o = {}) => ({
-  id: 'v1', tenantId: 't1', name: 'web-1', currentState: 'Running', desiredState: 'Running', transition: null as string | null, ipAddress: '10.0.0.5',
+  id: 'v1', tenantId: 't1', name: 'web-1', status: 'Running', ipAddress: '10.0.0.5',
   networkId: 'n1', vmOfferingId: 's', templateId: 'tmpl', clusterId: 'vn-hcm-1',
-  createdAt: '2026-01-01T00:00:00Z', currentExistence: 'Exists', desiredExistence: 'Exists',
+  createdAt: '2026-01-01T00:00:00Z',
   requestFailureReason: null as string | null, requestFailureDetail: null as string | null, requestFailedAt: null as string | null, ...o,
 })
 const tenant = (o = {}) => ({
@@ -119,7 +119,7 @@ describe('AdminVmsPage', () => {
   it('status filter narrows the list client-side and combines with tenant filter', async () => {
     server.use(
       http.get('*/v1/admin/vms', () =>
-        HttpResponse.json([vm({ id: 'v1', name: 'web-1', currentState: 'Running' }), vm({ id: 'v2', name: 'db-1', currentState: 'Error' })]),
+        HttpResponse.json([vm({ id: 'v1', name: 'web-1', status: 'Running' }), vm({ id: 'v2', name: 'db-1', status: 'Error' })]),
       ),
       http.get('*/v1/tenants', () => HttpResponse.json([tenant()])),
     )
@@ -141,7 +141,7 @@ describe('AdminVmsPage', () => {
     server.use(
       http.get('*/v1/admin/vms', () =>
         HttpResponse.json([vm({
-          id: 'v1', name: 'broken-1', currentState: null, currentExistence: 'NotCreated',
+          id: 'v1', name: 'broken-1', status: 'Failed',
           requestFailureReason: 'VM provisioning failed due to a system error. Please try again or contact support.',
           requestFailureDetail: raw, requestFailedAt: '2026-10-10T08:00:00Z',
         })]),
@@ -153,9 +153,28 @@ describe('AdminVmsPage', () => {
     expect(within(row).getByText('Failed')).toHaveAttribute('title', expect.stringContaining(raw))
   })
 
+  // The admin list sends the VM's one status; NotFound reads the way every other resource shows it.
+  it('shows each VM by its status, NotFound as Not found', async () => {
+    server.use(
+      http.get('*/v1/admin/vms', () =>
+        HttpResponse.json([
+          vm({ id: 'v1', name: 'lost-1', status: 'NotFound' }),
+          vm({ id: 'v2', name: 'unread-1', status: 'Unknown' }),
+          vm({ id: 'v3', name: 'stopping-1', status: 'Stopping' }),
+        ]),
+      ),
+      http.get('*/v1/tenants', () => HttpResponse.json([tenant()])),
+    )
+    renderWithProviders(<AdminVmsPage />)
+    const lost = (await screen.findByText('lost-1')).closest('tr')!
+    expect(within(lost).getByText('Not found')).toBeInTheDocument()
+    expect(within(screen.getByText('unread-1').closest('tr')!).getByText('Unknown')).toBeInTheDocument()
+    expect(within(screen.getByText('stopping-1').closest('tr')!).getByText('Stopping')).toBeInTheDocument()
+  })
+
   it('status filter empty result still shows empty state, not a crash', async () => {
     server.use(
-      http.get('*/v1/admin/vms', () => HttpResponse.json([vm({ name: 'web-1', currentState: 'Running' })])),
+      http.get('*/v1/admin/vms', () => HttpResponse.json([vm({ name: 'web-1', status: 'Running' })])),
       http.get('*/v1/tenants', () => HttpResponse.json([tenant()])),
     )
     renderWithProviders(<AdminVmsPage />)
