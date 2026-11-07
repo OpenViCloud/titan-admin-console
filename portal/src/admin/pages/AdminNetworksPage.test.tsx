@@ -8,7 +8,7 @@ import { AdminNetworksPage } from './AdminNetworksPage'
 
 const net = (o = {}) => ({
   id: 'n1', tenantId: 't1', name: 'prod-net', clusterId: 'vn-hcm-1', cidr: '10.0.0.0/24',
-  currentState: 'Created' as string | null, currentExistence: 'Exists', desiredExistence: 'Exists', transition: null as string | null,
+  status: 'Created',
   requestFailureReason: null as string | null, requestFailureDetail: null as string | null, requestFailedAt: null as string | null,
   createdAt: '2026-01-01T00:00:00Z', ...o,
 })
@@ -47,7 +47,7 @@ describe('AdminNetworksPage', () => {
   it('shows a failed create as Failed, with the reason and the raw detail on the badge', async () => {
     server.use(
       http.get('*/v1/admin/networks', () => HttpResponse.json([net({
-        currentState: null, currentExistence: 'NotCreated',
+        status: 'Failed',
         requestFailureReason: 'Network creation failed due to a system error. Please try again or contact support.',
         requestFailureDetail: 'create network: project t-1 not found',
       })])),
@@ -76,7 +76,7 @@ describe('AdminNetworksPage', () => {
   it('status filter narrows the list client-side', async () => {
     server.use(
       http.get('*/v1/admin/networks', () =>
-        HttpResponse.json([net({ id: 'n1', name: 'prod-net', currentState: 'Created' }), net({ id: 'n2', name: 'broken-net', currentState: 'Errored' })]),
+        HttpResponse.json([net({ id: 'n1', name: 'prod-net', status: 'Created' }), net({ id: 'n2', name: 'broken-net', status: 'Errored' })]),
       ),
       http.get('*/v1/tenants', () => HttpResponse.json([tenant()])),
     )
