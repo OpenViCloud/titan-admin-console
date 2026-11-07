@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import { useT } from '@/i18n/LanguageContext'
 
 // US-A08 — read-only cross-tenant network view. No create/delete: observation only (write backlog).
-// Keys are what incusLabel() returns: an Incus status, a waiting request's move, or why Incus has none.
+// Keys are what incusLabel() returns: the network's one status, NotFound spelled Not found.
 function statusVariant(s: string): 'success' | 'warning' | 'destructive' | 'outline' {
   if (s === 'Created') return 'success'
   if (s === 'Errored' || s === 'Unavailable' || s === 'Not found' || s === 'Failed') return 'destructive'

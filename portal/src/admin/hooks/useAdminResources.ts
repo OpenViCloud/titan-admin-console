@@ -30,11 +30,8 @@ export interface AdminNetwork {
   name: string
   clusterId: string
   cidr: string | null
-  // titan-ops architecture/desired-and-current.md#provider-state-is-verbatim — see lib/networkState.ts
-  currentState: string | null
-  currentExistence: string
-  desiredExistence: string
-  transition: string | null
+  // One status (titan-ops features/network/design.md#network-lifecycle) — see lib/networkState.ts
+  status: string
   requestFailureReason: string | null
   // Admin-only raw error of a command the provider gave up on.
   requestFailureDetail: string | null
