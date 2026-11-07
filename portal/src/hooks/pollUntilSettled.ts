@@ -4,7 +4,7 @@
 // list rendered once shows whatever was true at page load.
 //
 // Every provisioned resource polls while the server reports a request waiting: a VM's and a network's status
-// (lib/vmState.ts, lib/networkState.ts), the others' `transition` (lib/storageState.ts, lib/templateState.ts). What remains here is the
+// (lib/vmState.ts, lib/networkState.ts), the others' `transition` (lib/templateState.ts). What remains here is the
 // interval and the invoice predicate.
 
 export const POLL_MS = 5000
