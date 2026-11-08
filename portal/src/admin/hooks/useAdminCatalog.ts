@@ -10,9 +10,7 @@ import { pollWhileASyncWaits } from '@/lib/templateState'
 // Mirrors AdminTemplateClusterQueryResult (titan-ops features/catalog/design.md#template-state-is-existence).
 export interface AdminTemplateCluster {
   clusterId: string
-  currentExistence: 'NotCreated' | 'Exists' | 'NotFound'
-  desiredExistence: 'Exists'
-  transition: 'Syncing' | null
+  status: 'Syncing' | 'Available' | 'NotFound' | 'Failed'
   requestFailureReason: string | null
   requestFailureDetail: string | null
   requestFailedAt: string | null

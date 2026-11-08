@@ -7,12 +7,11 @@ import { Badge } from '@/components/ui/badge'
 import { OfferingsSection } from './OfferingsSection'
 import { useT } from '@/i18n/LanguageContext'
 
-// Badge label (templateClusterLabel: the waiting sync, else whether the cluster holds the alias) → semantic variant.
-// Available=ok (green), Not synced/Syncing=needs-attention (amber), Failed/Not found=action-needed (red). Text label
+// Badge label (templateClusterLabel: the cluster's status) → semantic variant.
+// Available=ok (green), Syncing=needs-attention (amber), Failed/Not found=action-needed (red). Text label
 // carries meaning too — not colour alone (a11y).
 const STATE_VARIANT: Record<string, 'success' | 'warning' | 'destructive'> = {
   Available: 'success',
-  'Not synced': 'warning',
   Syncing: 'warning',
   Failed: 'destructive',
   'Not found': 'destructive',

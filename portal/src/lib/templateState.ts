@@ -1,33 +1,24 @@
 // A template's sync in one cluster as the server sends it (titan-ops features/catalog/design.md#template-state-is-existence):
-// Incus has no status word for an image alias, so there is no currentState — only whether that cluster holds
-// the alias, the sync still waiting, and why the last one gave up.
-//   currentExistence / desiredExistence — NotCreated · Exists · NotFound / Exists (sync is add-only)
-//   transition           — Syncing while a sync waits for the worker, derived by the server
-//   requestFailureReason — the fixed reason of the last give-up; requestFailureDetail — the raw error
+// Incus has no status word for an image alias, so the one `status` is Titan's — Syncing while a sync waits for the
+// worker, Available when the cluster holds the alias, NotFound when the reconciler saw it gone, Failed when a sync gave
+// up before any alias was there. requestFailureReason / requestFailureDetail say why the last sync gave up.
 
 import { POLL_MS } from '@/hooks/pollUntilSettled'
 
 export interface TemplateClusterFields {
-  currentExistence: string
-  transition: string | null
-  requestFailureReason: string | null
+  status: string
 }
 
-/** The badge (P3b-1, the storage words): the waiting sync, else whether the cluster holds the alias, else why not. */
+const LABEL: Record<string, string> = {
+  Syncing: 'Syncing',
+  Available: 'Available',
+  NotFound: 'Not found',
+  Failed: 'Failed',
+}
+
+/** The badge: the status word, spelled for the operator. A status this page does not know shows as the server spelled it. */
 export function templateClusterLabel(cluster: TemplateClusterFields): string {
-  if (cluster.transition !== null) {
-    return cluster.transition
-  }
-  if (cluster.currentExistence === 'Exists') {
-    return 'Available'
-  }
-  if (cluster.currentExistence === 'NotFound') {
-    return 'Not found'
-  }
-  if (cluster.requestFailureReason !== null) {
-    return 'Failed'
-  }
-  return 'Not synced'
+  return LABEL[cluster.status] ?? cluster.status
 }
 
 /** React Query `refetchInterval`: refresh while a sync waits in any cluster, then stop. */
@@ -35,7 +26,7 @@ export function pollWhileASyncWaits(clusters: readonly TemplateClusterFields[] |
   if (clusters === undefined) {
     return false
   }
-  const anyWaiting = clusters.some(cluster => cluster.transition !== null)
+  const anyWaiting = clusters.some(cluster => cluster.status === 'Syncing')
   if (anyWaiting) {
     return POLL_MS
   }
