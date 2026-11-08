@@ -9,9 +9,9 @@ import { AdminCatalogPage } from './AdminCatalogPage'
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() }, Toaster: () => null }))
 
 // Mirrors AdminTemplateQueryResult (control-plane) — GET /v1/admin/templates returns every template with its
-// existence per cluster (titan-ops features/catalog/design.md#template-state-is-existence).
+// status per cluster (titan-ops features/catalog/design.md#template-state-is-existence).
 const clusterState = (o = {}) => ({
-  clusterId: 'mock', currentExistence: 'Exists', desiredExistence: 'Exists', transition: null,
+  clusterId: 'mock', status: 'Available',
   requestFailureReason: null, requestFailureDetail: null, requestFailedAt: null, externalTemplateId: 'tpl-205',
   ...o,
 })
@@ -49,7 +49,7 @@ describe('AdminCatalogPage', () => {
   // One template, two clusters: each cluster's state on its own badge.
   it('shows each cluster’s sync state on its own badge', async () => {
     server.use(http.get('*/v1/admin/templates', () => HttpResponse.json([
-      template({}, [clusterState({ clusterId: 'singapore01', currentExistence: 'NotCreated', transition: 'Syncing', externalTemplateId: null }), clusterState()]),
+      template({}, [clusterState({ clusterId: 'singapore01', status: 'Syncing', externalTemplateId: null }), clusterState()]),
     ])))
     renderWithProviders(<AdminCatalogPage />)
     await waitFor(() => expect(screen.getByText('singapore01 · Syncing')).toBeInTheDocument())
@@ -69,7 +69,7 @@ describe('AdminCatalogPage', () => {
     server.use(http.get('*/v1/admin/templates', () => {
       reads++
       if (reads === 1) {
-        return HttpResponse.json([template({}, [clusterState({ clusterId: 'singapore01', currentExistence: 'NotCreated', transition: 'Syncing', externalTemplateId: null }), clusterState()])])
+        return HttpResponse.json([template({}, [clusterState({ clusterId: 'singapore01', status: 'Syncing', externalTemplateId: null }), clusterState()])])
       }
       return HttpResponse.json([template({}, [clusterState({ clusterId: 'singapore01', externalTemplateId: 'tpl-3' }), clusterState()])])
     }))
@@ -108,19 +108,10 @@ describe('AdminCatalogPage', () => {
     await waitFor(() => expect(screen.getByText('tier-that-was-deleted')).toBeInTheDocument())
   })
 
-  it('marks a cluster never synced distinctly from one that has the alias', async () => {
-    server.use(http.get('*/v1/admin/templates', () =>
-      HttpResponse.json([template({ id: 'p1', name: 'debian-pending' }, [clusterState({ currentExistence: 'NotCreated', externalTemplateId: null })])]),
-    ))
-    renderWithProviders(<AdminCatalogPage />)
-    await waitFor(() => expect(screen.getByText('debian-pending')).toBeInTheDocument())
-    expect(screen.getByText('mock · Not synced')).toBeInTheDocument()
-  })
-
   it('shows a failed sync with its reason and raw error so the admin can diagnose', async () => {
     server.use(http.get('*/v1/admin/templates', () =>
       HttpResponse.json([template({ id: 'f1', name: 'broken' }, [clusterState({
-        currentExistence: 'NotCreated', externalTemplateId: null,
+        status: 'Failed', externalTemplateId: null,
         requestFailureReason: 'The cluster has no cluster.', requestFailureDetail: 'cluster not found', requestFailedAt: '2026-10-11T09:00:00Z',
       })])]),
     ))
@@ -133,7 +124,7 @@ describe('AdminCatalogPage', () => {
   // The reconciler saw the alias gone: the template is hidden from customers in that cluster.
   it('shows an alias seen gone as Not found', async () => {
     server.use(http.get('*/v1/admin/templates', () =>
-      HttpResponse.json([template({ id: 'n1', name: 'alma-9' }, [clusterState({ currentExistence: 'NotFound' })])]),
+      HttpResponse.json([template({ id: 'n1', name: 'alma-9' }, [clusterState({ status: 'NotFound' })])]),
     ))
     renderWithProviders(<AdminCatalogPage />)
     await waitFor(() => expect(screen.getByText('alma-9')).toBeInTheDocument())
@@ -144,7 +135,7 @@ describe('AdminCatalogPage', () => {
   // The server says a sync is waiting; the page shows that instead of what the cluster holds.
   it('shows Syncing while a sync request waits for the worker', async () => {
     server.use(http.get('*/v1/admin/templates', () =>
-      HttpResponse.json([template({ id: 's1', name: 'rocky-9' }, [clusterState({ currentExistence: 'NotFound', transition: 'Syncing' })])]),
+      HttpResponse.json([template({ id: 's1', name: 'rocky-9' }, [clusterState({ status: 'Syncing' })])]),
     ))
     renderWithProviders(<AdminCatalogPage />)
     await waitFor(() => expect(screen.getByText('rocky-9')).toBeInTheDocument())
@@ -153,20 +144,20 @@ describe('AdminCatalogPage', () => {
   })
 
   // CQRS-5 D-5 — the sync answers 202 with no body, so the page has no counts to show. It confirms the
-  // trigger and reads the outcome back from the template list: Not synced before, Available after.
+  // trigger and reads the outcome back from the template list: Failed before, Available after.
   it('sync button POSTs, confirms the trigger, and re-reads the list for the outcome', async () => {
     const { toast } = await import('sonner')
     let synced = false
     server.use(
       http.get('*/v1/admin/templates', () =>
-        HttpResponse.json([template({}, [clusterState(synced ? {} : { currentExistence: 'NotCreated', externalTemplateId: null })])])),
+        HttpResponse.json([template({}, [clusterState(synced ? {} : { status: 'Failed', externalTemplateId: null, requestFailureReason: 'The cluster has no cluster.' })])])),
       http.post('*/v1/admin/templates/sync', () => {
         synced = true
         return new HttpResponse(null, { status: 202 })
       }),
     )
     renderWithProviders(<AdminCatalogPage />)
-    await waitFor(() => expect(screen.getByText('mock · Not synced')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText('mock · Failed')).toBeInTheDocument())
 
     await userEvent.click(screen.getByRole('button', { name: 'Sync templates' }))
 
