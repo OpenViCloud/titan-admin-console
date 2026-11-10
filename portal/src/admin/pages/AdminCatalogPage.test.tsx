@@ -25,8 +25,8 @@ const template = (o = {}, clusters = [clusterState()]) => ({
 // The tier catalog the page resolves vmOfferingId against. Sizes chosen far apart so an assertion
 // on one of them cannot be satisfied by accidentally reading the other.
 const tiers = [
-  { id: 'm', name: 'Medium', cpu: 1, vcpu: 2, memoryMb: 4096, pricePerHour: 311.256 },
-  { id: 'l', name: 'Large', cpu: 2, vcpu: 4, memoryMb: 8192, pricePerHour: 634.05 },
+  { id: 'm', name: 'Medium', vcpu: 2, memoryMb: 4096, pricePerHour: 311.256 },
+  { id: 'l', name: 'Large', vcpu: 4, memoryMb: 8192, pricePerHour: 634.05 },
 ]
 
 describe('AdminCatalogPage', () => {

@@ -10,11 +10,11 @@ vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() }, Toaster:
 
 // Mirrors VmOfferingQueryResult / VolumeOfferingQueryResult after titan-ops architecture/money-and-wallet.md#price-belongs-to-offering — price included.
 const vmTier = (o = {}) => ({
-  id: 'm', name: 'Medium', cpu: 1, vcpu: 2, memoryMb: 4096, pricePerHour: 311.256, ...o,
+  id: 'm', name: 'Medium', vcpu: 2, memoryMb: 4096, pricePerHour: 311.256, ...o,
 })
 
 const volumeTier = (o = {}) => ({
-  id: 'standard', name: 'Standard', sizeGb: 0, isCustomized: true, pricePerGbPerHour: 1.57914, ...o,
+  id: 'standard', name: 'Standard', pricePerGbPerHour: 1.57914, ...o,
 })
 
 function seed(vm = [vmTier()], volume = [volumeTier()]) {
@@ -36,7 +36,7 @@ describe('OfferingsSection', () => {
 
     const row = await screen.findByTestId('vm-offering-m')
     expect(within(row).getByText('Medium')).toBeInTheDocument()
-    expect(within(row).getByText('1 / 2')).toBeInTheDocument()
+    expect(within(row).getByText('2')).toBeInTheDocument()
     expect(within(row).getByText('4096')).toBeInTheDocument()
     expect(within(row).getByText(/311\.256\s*₫/)).toBeInTheDocument()
   })
@@ -50,7 +50,7 @@ describe('OfferingsSection', () => {
 
     const row = await screen.findByTestId('volume-offering-standard')
     expect(within(row).getByText(/1\.57914\s*₫/)).toBeInTheDocument()
-    expect(within(row).getByText('Customer-sized')).toBeInTheDocument()
+    expect(within(row).getByText('Standard')).toBeInTheDocument()
   })
 
   // A6.2 — after saving, the table shows the new price. The refetch returns the updated row, which
@@ -159,7 +159,7 @@ describe('OfferingsSection', () => {
     expect(screen.getByRole('heading', { name: 'Cấu hình' })).toBeInTheDocument()
     expect(screen.getByRole('columnheader', { name: 'Giá / giờ' })).toBeInTheDocument()
     expect(within(row).getByText(/311,256\s*₫/)).toBeInTheDocument()
-    expect(screen.getByText('Khách tự chọn dung lượng')).toBeInTheDocument()
+    expect(await screen.findByRole('columnheader', { name: 'Giá / GB / giờ' })).toBeInTheDocument()
 
     await userEvent.click(within(row).getByRole('button', { name: 'Sửa giá của Medium' }))
     const input = await screen.findByLabelText('Giá (₫ mỗi giờ)')
