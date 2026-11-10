@@ -50,7 +50,7 @@ export function OfferingsSection() {
             <TableHeader>
               <TableRow>
                 <TableHead>{t.adminOfferings.tier}</TableHead>
-                <TableHead>{t.adminOfferings.cpuVcpu}</TableHead>
+                <TableHead>{t.adminOfferings.vcpu}</TableHead>
                 <TableHead>{t.adminOfferings.memoryMb}</TableHead>
                 <TableHead>{t.adminOfferings.pricePerHour}</TableHead>
                 <TableHead className="w-px" />
@@ -60,7 +60,7 @@ export function OfferingsSection() {
               {vmOfferings.data.map(o => (
                 <TableRow key={o.id} data-testid={`vm-offering-${o.id}`}>
                   <TableCell>{o.name}</TableCell>
-                  <TableCell>{o.cpu} / {o.vcpu}</TableCell>
+                  <TableCell>{o.vcpu}</TableCell>
                   <TableCell>{o.memoryMb}</TableCell>
                   <TableCell data-testid={`vm-offering-price-${o.id}`}>
                     {f.rate(o.pricePerHour)}
@@ -95,7 +95,6 @@ export function OfferingsSection() {
             <TableHeader>
               <TableRow>
                 <TableHead>{t.adminOfferings.tier}</TableHead>
-                <TableHead>{t.adminOfferings.size}</TableHead>
                 <TableHead>{t.adminOfferings.pricePerGbPerHour}</TableHead>
               </TableRow>
             </TableHeader>
@@ -103,7 +102,6 @@ export function OfferingsSection() {
               {volumeOfferings.data.map(o => (
                 <TableRow key={o.id} data-testid={`volume-offering-${o.id}`}>
                   <TableCell>{o.name}</TableCell>
-                  <TableCell>{o.isCustomized ? t.adminOfferings.customerSized : `${o.sizeGb} GB`}</TableCell>
                   <TableCell data-testid={`volume-offering-price-${o.id}`}>
                     {f.rate(o.pricePerGbPerHour)}
                   </TableCell>

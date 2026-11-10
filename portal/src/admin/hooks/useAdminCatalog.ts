@@ -66,7 +66,6 @@ export function useSyncTemplates() {
 export interface VmOfferingRow {
   id: string
   name: string
-  cpu: number
   vcpu: number
   memoryMb: number
   pricePerHour: number
@@ -76,8 +75,6 @@ export interface VmOfferingRow {
 export interface VolumeOfferingRow {
   id: string
   name: string
-  sizeGb: number
-  isCustomized: boolean
   pricePerGbPerHour: number
 }
 
