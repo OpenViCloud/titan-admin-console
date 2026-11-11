@@ -3,6 +3,8 @@ export interface AppConfig {
   keycloakRealm: string
   keycloakClientId: string
   apiBaseUrl: string
+  // The operator metrics tool of this environment; absent where there is none.
+  metricsUrl?: string
 }
 
 let _config: AppConfig | null = null

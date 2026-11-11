@@ -326,6 +326,7 @@ export const en = {
     backups: 'Backups',
     auditLog: 'Audit Log',
     platformAdmin: 'Platform admin',
+    metrics: 'Metrics',
   },
   adminFilters: {
     filterByStatus: 'Filter by status',

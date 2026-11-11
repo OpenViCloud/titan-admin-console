@@ -1,13 +1,14 @@
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 
 const signoutRedirect = vi.fn()
 vi.mock('react-oidc-context', () => ({
   useAuth: vi.fn(() => ({ signoutRedirect })),
 }))
 
+import { getConfig, setConfig, type AppConfig } from '@/lib/config'
 import { FixedLanguage } from '@/test/FixedLanguage'
 import { AdminLayout } from './AdminLayout'
 
@@ -16,6 +17,12 @@ function renderAt(path = '/') {
 }
 
 describe('AdminLayout', () => {
+  let baseConfig: AppConfig
+  beforeAll(() => {
+    baseConfig = getConfig()
+  })
+  afterEach(() => setConfig(baseConfig))
+
   it('renders the OpenViCloud Admin brand', () => {
     renderAt()
     expect(screen.getAllByText('OpenViCloud').length).toBeGreaterThan(0)
@@ -31,6 +38,32 @@ describe('AdminLayout', () => {
     expect(within(nav).getAllByRole('link').map(a => a.getAttribute('href'))).toEqual([
       '/', '/tenants', '/promotional-credits', '/vms', '/networks', '/invoices', '/catalog', '/clusters', '/backups', '/audit-log',
     ])
+  })
+
+  it('links to the metrics tool in a new tab when the environment has one', () => {
+    setConfig({ ...baseConfig, metricsUrl: 'https://metrics.example.test/vmui/' })
+    renderAt()
+    const link = screen.getByRole('link', { name: /Metrics/ })
+    expect(link).toHaveAttribute('href', 'https://metrics.example.test/vmui/')
+    expect(link).toHaveAttribute('target', '_blank')
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer')
+    const nav = screen.getByRole('navigation', { name: 'Main' })
+    expect(within(nav).queryByRole('link', { name: /Metrics/ })).not.toBeInTheDocument()
+  })
+
+  it('shows no metrics link when the environment has no metrics tool', () => {
+    renderAt()
+    expect(screen.queryByRole('link', { name: /Metrics/ })).not.toBeInTheDocument()
+  })
+
+  it('names the metrics link in Vietnamese', () => {
+    setConfig({ ...baseConfig, metricsUrl: 'https://metrics.example.test/vmui/' })
+    render(
+      <FixedLanguage lang="vi">
+        <MemoryRouter><AdminLayout /></MemoryRouter>
+      </FixedLanguage>,
+    )
+    expect(screen.getByRole('link', { name: /Số liệu vận hành/ })).toHaveAttribute('href', 'https://metrics.example.test/vmui/')
   })
 
   it('marks the current page and shows crumbs back to Dashboard', () => {
