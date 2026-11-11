@@ -1,9 +1,10 @@
 import { Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from 'react-oidc-context'
-import { LayoutDashboard, Building2, Gift, Receipt, Package, Server, Network, Boxes, DatabaseBackup, ScrollText, LogOut } from 'lucide-react'
+import { LayoutDashboard, Building2, Gift, Receipt, Package, Server, Network, Boxes, DatabaseBackup, ScrollText, LogOut, Activity, ExternalLink } from 'lucide-react'
 import { DropdownMenuItem } from '@/components/ui/dropdown-menu'
 import { AppShell, type Crumb, type NavGroup } from '@/components/shell/AppShell'
 import { useT } from '@/i18n/LanguageContext'
+import { getConfig } from '@/lib/config'
 import type { Messages } from '@/i18n/en'
 
 function navGroups(t: Messages): NavGroup[] {
@@ -59,6 +60,25 @@ export function AdminLayout() {
     </DropdownMenuItem>
   )
 
+  // A separate tool on its own host, outside this app's routes and sign-in, so it opens in a new tab and stays out of
+  // the in-app navigation.
+  const metricsUrl = getConfig().metricsUrl
+  let sidebarFooter = null
+  if (metricsUrl) {
+    sidebarFooter = (
+      <a
+        href={metricsUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center gap-2 text-muted-foreground hover:text-primary-ink hover:underline"
+      >
+        <Activity className="h-3.5 w-3.5" />
+        {t.adminNav.metrics}
+        <ExternalLink className="h-3 w-3" aria-hidden="true" />
+      </a>
+    )
+  }
+
   return (
     <AppShell
       brand="OpenViCloud"
@@ -67,6 +87,7 @@ export function AdminLayout() {
       crumbs={crumbsFor(location.pathname, t)}
       accountLabel={t.adminNav.platformAdmin}
       accountItems={accountItems}
+      sidebarFooter={sidebarFooter}
     >
       <Outlet />
     </AppShell>

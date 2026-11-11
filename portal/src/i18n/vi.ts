@@ -320,6 +320,7 @@ export const vi: Messages = {
     backups: 'Sao lưu',
     auditLog: 'Nhật ký quản trị',
     platformAdmin: 'Quản trị nền tảng',
+    metrics: 'Số liệu vận hành',
   },
   adminFilters: {
     filterByStatus: 'Lọc theo trạng thái',
