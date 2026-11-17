@@ -13,15 +13,15 @@ const ADMIN_PASSWORD = process.env.ADMIN_TEST_PASSWORD
 
 const EVIDENCE = process.env.RESULTS_DIR || 'test-results/evidence'
 
-// The approved price table (Tôn Chủ 2026-08-09, VND per titan-ops architecture/money-and-wallet.md#money-is-long-vnd) as the rate renders in
-// English, the default language: "." is the decimal separator, "," groups thousands. Written here as constants — the
-// oracle must not come from the page being checked.
+// The approved price table (titan-ops features/catalog/design.md#whole-vnd-prices) as the rate renders in English, the
+// default language: "," groups thousands. Written here as constants — the oracle must not come from the page being
+// checked.
 const APPROVED = {
-  s: '161.388',
-  m: '311.256',
-  l: '634.05',
-  xl: '1,268.1',
-  volume: '1.57914',
+  s: '170',
+  m: '320',
+  l: '640',
+  xl: '1,280',
+  volume: '2',
 }
 const TEMP_PRICE = '400000'
 const TEMP_RENDERED = '400,000'
@@ -65,7 +65,7 @@ async function openCatalog(page: Page) {
 
 // ── U-1/U-2/U-3 — the product and its price on one row ─────────────────────
 
-test('U-1/U-2/U-3 — catalog shows every tier beside its price, sub-đồng rates intact', async ({ browser }) => {
+test('U-1/U-2/U-3 — catalog shows every tier beside its price', async ({ browser }) => {
   const context = await browser.newContext()
   const page = await adminPage(context)
   await openCatalog(page)
@@ -81,11 +81,10 @@ test('U-1/U-2/U-3 — catalog shows every tier beside its price, sub-đồng rat
   }
   await expect(page.getByTestId('vm-offering-m')).toContainText('Medium')
 
-  // U-3 — a storage rate is 1.57914 ₫/GB/h. formatMoney rounds VND to whole đồng and would render it
-  // as "2 ₫", making every future price change invisible. formatRate must be the one in play.
+  // U-3 — the storage rate sits on its own row. That a sub-đồng rate is not rounded away is pinned by the unit
+  // test "shows a sub-đồng storage rate without rounding it away": the approved rate is now whole.
   const volumeCell = page.getByTestId('volume-offering-price-standard')
   await expect(volumeCell).toContainText(APPROVED.volume)
-  await expect(volumeCell).not.toHaveText(/^\s*2\s*₫\s*$/)
 
   await page.screenshot({ path: `${EVIDENCE}/catalog-offerings-pass.png`, fullPage: true })
   await context.close()
@@ -102,14 +101,14 @@ test('U-5/U-9 — dialog rejects a non-positive price in words, and previews the
   const input = page.getByLabel(/price \(₫ per hour\)/i)
   await expect(input).toBeVisible()
 
-  // U-9 — admins decide prices in monthly terms; without this the screen asks them to multiply by 720.
+  // U-9 — admins decide prices in monthly terms; without this the screen asks them to multiply by 730.
   await input.fill('1000')
-  await expect(page.getByText(/720,000\s*₫\/month/)).toBeVisible()
+  await expect(page.getByText(/730,000\s*₫\/month/)).toBeVisible()
 
   // U-5 — the refusal has to be readable, not just a red border (a11y: never colour alone).
   await input.fill('0')
   await expect(page.getByRole('button', { name: /save price/i })).toBeDisabled()
-  await expect(page.getByText(/enter a price greater than 0/i)).toBeVisible()
+  await expect(page.getByText(/enter a whole number of đồng greater than 0/i)).toBeVisible()
 
   await page.screenshot({ path: `${EVIDENCE}/edit-price-dialog-guard-pass.png`, fullPage: true })
   await context.close()
@@ -148,7 +147,7 @@ test('U-4/U-6/U-8 — price change lands without reload, is audited, and is rest
   const auditRow = page.getByRole('row').filter({ hasText: 'pricing.vm_offering.change' }).first()
   await expect(auditRow).toBeVisible({ timeout: 20_000 })
   await expect(auditRow, 'which tier').toContainText('vm_offering · m')
-  await expect(auditRow, 'from what to what').toContainText('311.256000 -> 400000')
+  await expect(auditRow, 'from what to what').toContainText(/320(\.0+)? -> 400000/)
   // A price applies to every tenant, so there is no owning tenant. Printing the raw value would show
   // an all-zero GUID, which reads as a tenant that does not exist rather than the absence of one.
   await expect(auditRow, 'platform-scope, not a zero GUID').toContainText('Platform')
@@ -159,7 +158,7 @@ test('U-4/U-6/U-8 — price change lands without reload, is audited, and is rest
   // skipped or fail to start, leaving the environment selling at a number nobody approved.
   await openCatalog(page)
   await page.getByRole('button', { name: /edit price for medium/i }).click()
-  await page.getByLabel(/price \(₫ per hour\)/i).fill('311.256')
+  await page.getByLabel(/price \(₫ per hour\)/i).fill('320')
   await page.getByRole('button', { name: /save price/i }).click()
   await expect(priceCell, 'restored to the approved price').toContainText(APPROVED.m, { timeout: 20_000 })
   await page.screenshot({ path: `${EVIDENCE}/price-restored-pass.png`, fullPage: true })

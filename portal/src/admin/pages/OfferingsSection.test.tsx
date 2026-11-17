@@ -10,7 +10,7 @@ vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() }, Toaster:
 
 // Mirrors VmOfferingQueryResult / VolumeOfferingQueryResult after titan-ops architecture/money-and-wallet.md#price-belongs-to-offering — price included.
 const vmTier = (o = {}) => ({
-  id: 'm', name: 'Medium', vcpu: 2, memoryMb: 4096, pricePerHour: 311.256, ...o,
+  id: 'm', name: 'Medium', vcpu: 2, memoryMb: 4096, pricePerHour: 320, ...o,
 })
 
 const volumeTier = (o = {}) => ({
@@ -38,7 +38,7 @@ describe('OfferingsSection', () => {
     expect(within(row).getByText('Medium')).toBeInTheDocument()
     expect(within(row).getByText('2')).toBeInTheDocument()
     expect(within(row).getByText('4096')).toBeInTheDocument()
-    expect(within(row).getByText(/311\.256\s*₫/)).toBeInTheDocument()
+    expect(within(row).getByText(/320\s*₫/)).toBeInTheDocument()
   })
 
   // A storage rate is 1.57914 ₫/GB/h. formatMoney rounds VND to whole đồng, which would render this
@@ -56,7 +56,7 @@ describe('OfferingsSection', () => {
   // A6.2 — after saving, the table shows the new price. The refetch returns the updated row, which
   // is what proves the list is driven by the server rather than by local state.
   it('shows the new price after saving, without a reload', async () => {
-    let current = 311.256
+    let current = 320
     server.use(
       http.get('*/v1/vm-offerings', () => HttpResponse.json([vmTier({ pricePerHour: current })])),
       http.get('*/v1/volume-offerings', () => HttpResponse.json([volumeTier()])),
@@ -91,7 +91,7 @@ describe('OfferingsSection', () => {
     expect(await screen.findByText(/Price — Medium \(2 vCPU · 4096 MB\)/)).toBeInTheDocument()
   })
 
-  // Admins decide prices in monthly terms. Without this the screen asks them to multiply by 720.
+  // Admins decide prices in monthly terms. Without this the screen asks them to multiply by 730.
   it('previews the monthly cost of the price being typed', async () => {
     seed()
     renderWithProviders(<OfferingsSection />)
@@ -102,11 +102,12 @@ describe('OfferingsSection', () => {
     await userEvent.clear(input)
     await userEvent.type(input, '1000')
 
-    expect(screen.getByText(/720,000\s*₫\/month/)).toBeInTheDocument()
+    expect(screen.getByText(/730,000\s*₫\/month/)).toBeInTheDocument()
   })
 
-  // A6.5 — a non-positive price cannot be submitted, and the reason is text, not just a red border.
-  it.each(['0', '-5'])('refuses to submit price %s', async price => {
+  // A6.5 — a price that is not a whole number of đồng above 0 cannot be submitted, and the reason is text, not just a
+  // red border (titan-ops features/catalog/design.md#whole-vnd-prices).
+  it.each(['0', '-5', '170.5'])('refuses to submit price %s', async price => {
     seed()
     renderWithProviders(<OfferingsSection />)
 
@@ -117,7 +118,7 @@ describe('OfferingsSection', () => {
     await userEvent.type(input, price)
 
     expect(screen.getByRole('button', { name: /save price/i })).toBeDisabled()
-    expect(screen.getByText(/enter a price greater than 0/i)).toBeInTheDocument()
+    expect(screen.getByText(/enter a whole number of đồng greater than 0/i)).toBeInTheDocument()
   })
 
   // Money path: a failed save must not look like a successful one. The dialog stays open, the error
@@ -158,19 +159,19 @@ describe('OfferingsSection', () => {
     const row = await screen.findByTestId('vm-offering-m')
     expect(screen.getByRole('heading', { name: 'Cấu hình' })).toBeInTheDocument()
     expect(screen.getByRole('columnheader', { name: 'Giá / giờ' })).toBeInTheDocument()
-    expect(within(row).getByText(/311,256\s*₫/)).toBeInTheDocument()
+    expect(within(row).getByText(/320\s*₫/)).toBeInTheDocument()
     expect(await screen.findByRole('columnheader', { name: 'Giá / GB / giờ' })).toBeInTheDocument()
 
     await userEvent.click(within(row).getByRole('button', { name: 'Sửa giá của Medium' }))
     const input = await screen.findByLabelText('Giá (₫ mỗi giờ)')
     await userEvent.clear(input)
     await userEvent.type(input, '1000')
-    expect(screen.getByText(/720\.000\s*₫\/tháng/)).toBeInTheDocument()
+    expect(screen.getByText(/730\.000\s*₫\/tháng/)).toBeInTheDocument()
   })
 
-  // titan-ops features/cloud-console/design.md#portal-language — a rate keeps decimals, and in Vietnamese the decimal mark is a
-  // comma: the field starts the way the page shows the price and reads what the admin types the same way.
-  it('reads a price typed with the Vietnamese decimal mark', async () => {
+  // titan-ops features/cloud-console/design.md#portal-language — in Vietnamese the decimal mark is a comma and "." groups
+  // thousands: "170,5" is a fraction and is refused, "1.280" is one thousand two hundred eighty.
+  it('refuses a price typed with the Vietnamese decimal mark and reads Vietnamese grouping', async () => {
     let sent: unknown = null
     seed()
     server.use(http.patch('*/v1/admin/vm-offerings/m/price', async ({ request }) => {
@@ -182,12 +183,17 @@ describe('OfferingsSection', () => {
     const row = await screen.findByTestId('vm-offering-m')
     await userEvent.click(within(row).getByRole('button', { name: 'Sửa giá của Medium' }))
     const input = await screen.findByLabelText('Giá (₫ mỗi giờ)')
-    expect(input).toHaveValue('311,256')
+    expect(input).toHaveValue('320')
     await userEvent.clear(input)
-    await userEvent.type(input, '161,388')
+    await userEvent.type(input, '170,5')
+    expect(screen.getByRole('button', { name: 'Lưu giá' })).toBeDisabled()
+    expect(screen.getByText('Nhập số đồng nguyên lớn hơn 0.')).toBeInTheDocument()
+
+    await userEvent.clear(input)
+    await userEvent.type(input, '1.280')
     await userEvent.click(screen.getByRole('button', { name: 'Lưu giá' }))
 
-    await waitFor(() => expect(sent).toEqual({ pricePerHour: 161.388 }))
+    await waitFor(() => expect(sent).toEqual({ pricePerHour: 1280 }))
   })
 
   it('reads a price typed with English grouping', async () => {
@@ -203,9 +209,9 @@ describe('OfferingsSection', () => {
     await userEvent.click(screen.getByRole('button', { name: /edit price for medium/i }))
     const input = await screen.findByLabelText(/price \(₫ per hour\)/i)
     await userEvent.clear(input)
-    await userEvent.type(input, '1,234.5')
+    await userEvent.type(input, '1,234')
     await userEvent.click(screen.getByRole('button', { name: /save price/i }))
 
-    await waitFor(() => expect(sent).toEqual({ pricePerHour: 1234.5 }))
+    await waitFor(() => expect(sent).toEqual({ pricePerHour: 1234 }))
   })
 })

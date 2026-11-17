@@ -15,10 +15,11 @@ import {
 import { useT, useFormat, useLang } from '@/i18n/LanguageContext'
 import { parseRate, rateInputValue } from '@/lib/money'
 
-// Hours in the month a price preview is quoted against. Admins decide prices in monthly terms; a
-// rate of "311 ₫/h" gives nobody a sense of the invoice it produces, and making them multiply by 720
+// Hours in the month a price preview is quoted against, the same 730 as the public site
+// (titan-ops features/catalog/design.md#whole-vnd-prices). Admins decide prices in monthly terms; a
+// rate of "320 ₫/h" gives nobody a sense of the invoice it produces, and making them multiply by 730
 // in their head moves the work onto the person the screen exists to help.
-const HOURS_PER_MONTH = 720
+const HOURS_PER_MONTH = 730
 
 // titan-ops architecture/money-and-wallet.md#price-belongs-to-offering — a product and its price belong on the same row. Before this, an admin who wanted to know
 // what tier "m" cost had to open /pricing, find a row keyed by the slug "m", then open the catalog to
@@ -139,9 +140,10 @@ function EditPriceDialog({
     setServerError(null)
   }
 
-  // The decimal mark follows the language the page is shown in (311,256 ₫ in Vietnamese); Number() reads only '.'.
+  // Grouping and decimal marks follow the language the page is shown in (1.280 ₫ in Vietnamese); Number() reads only '.'.
   const typed = parseRate(value, lang)
-  const isValid = typed !== null && typed > 0
+  // A VM price is a whole number of đồng (titan-ops features/catalog/design.md#whole-vnd-prices).
+  const isValid = typed !== null && typed > 0 && Number.isInteger(typed)
   let parsed = 0
   if (typed !== null) {
     parsed = typed

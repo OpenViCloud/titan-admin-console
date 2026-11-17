@@ -458,7 +458,7 @@ export const vi: Messages = {
     dialogDescription: 'Áp dụng cho mọi tenant từ lần đo mức sử dụng kế tiếp. Hoá đơn đã phát hành giữ nguyên giá lúc tính.',
     priceLabel: 'Giá (₫ mỗi giờ)',
     preview: (rate: string, month: string) => `${rate}/giờ ≈ ${month}/tháng`,
-    priceInvalid: 'Nhập giá lớn hơn 0.',
+    priceInvalid: 'Nhập số đồng nguyên lớn hơn 0.',
     savePrice: 'Lưu giá',
   },
   adminVms: {
