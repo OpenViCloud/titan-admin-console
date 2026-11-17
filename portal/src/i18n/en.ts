@@ -465,7 +465,7 @@ export const en = {
     dialogDescription: 'Applies to every tenant from the next metering tick. Invoices already issued keep the price they were billed at.',
     priceLabel: 'Price (₫ per hour)',
     preview: (rate: string, month: string) => `${rate}/hour ≈ ${month}/month`,
-    priceInvalid: 'Enter a price greater than 0.',
+    priceInvalid: 'Enter a whole number of đồng greater than 0.',
     savePrice: 'Save price',
   },
   adminVms: {
