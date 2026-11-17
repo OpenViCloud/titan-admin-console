@@ -16,7 +16,7 @@ import { useT, useFormat, useLang } from '@/i18n/LanguageContext'
 import { parseRate, rateInputValue } from '@/lib/money'
 
 // Hours in the month a price preview is quoted against, the same 730 as the public site
-// (titan-ops features/catalog/design.md#whole-vnd-prices). Admins decide prices in monthly terms; a
+// (titan-ops features/catalog/design.md#admin-price-edit). Admins decide prices in monthly terms; a
 // rate of "320 ₫/h" gives nobody a sense of the invoice it produces, and making them multiply by 730
 // in their head moves the work onto the person the screen exists to help.
 const HOURS_PER_MONTH = 730

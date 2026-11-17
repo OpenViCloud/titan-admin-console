@@ -41,8 +41,8 @@ describe('OfferingsSection', () => {
     expect(within(row).getByText(/320\s*₫/)).toBeInTheDocument()
   })
 
-  // A storage rate is 1.57914 ₫/GB/h. formatMoney rounds VND to whole đồng, which would render this
-  // as "2 ₫" and make every price change invisible — hence formatRate. Pinned because the wrong
+  // A fractional storage rate (this fixture's 1.57914 ₫/GB/h). formatMoney rounds VND to whole đồng, which would
+  // render it as "2 ₫" and make a small price change invisible — hence formatRate. Pinned because the wrong
   // helper here is a silent, plausible-looking bug.
   it('shows a sub-đồng storage rate without rounding it away', async () => {
     seed()
