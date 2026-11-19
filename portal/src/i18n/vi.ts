@@ -358,7 +358,7 @@ export const vi: Messages = {
     size: 'Dung lượng',
     health: 'Trạng thái',
     noRows: 'Chưa có gì được bảo vệ.',
-    kinds: { postgres: 'Postgres', vm: 'VM', volume: 'Ổ đĩa' } as Record<string, string>,
+    kinds: { postgres: 'Postgres', vm: 'VM', volume: 'Ổ đĩa', cluster: 'Cấu hình cụm' } as Record<string, string>,
     reasons: {
       NotReadYet: 'Chưa đọc bucket lần nào.',
       BucketUnreadable: 'Không đọc được bucket.',

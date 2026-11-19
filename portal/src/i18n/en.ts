@@ -364,7 +364,7 @@ export const en = {
     size: 'Size',
     health: 'State',
     noRows: 'Nothing is protected yet.',
-    kinds: { postgres: 'Postgres', vm: 'VM', volume: 'Volume' } as Record<string, string>,
+    kinds: { postgres: 'Postgres', vm: 'VM', volume: 'Volume', cluster: 'Cluster config' } as Record<string, string>,
     reasons: {
       NotReadYet: 'The bucket has not been read yet.',
       BucketUnreadable: 'The bucket could not be read.',

@@ -89,6 +89,24 @@ describe('AdminBackupsPage', () => {
     expect(within(platform).getByText('—', { selector: '[data-column="tenant"]' })).toBeInTheDocument()
   })
 
+  // titan-ops features/backup/design.md#cluster-backup: each cluster's config is a row of its own, of no tenant.
+  it('shows a cluster config row with its own kind and no tenant', async () => {
+    serve([disk({ kind: 'cluster', name: 'Singapore 01', tenantId: null })])
+    renderPage()
+
+    const row = (await screen.findByText('Singapore 01')).closest('tr') as HTMLElement
+    expect(within(row).getByText('Cluster config')).toBeInTheDocument()
+    expect(within(row).getByText('—', { selector: '[data-column="tenant"]' })).toBeInTheDocument()
+  })
+
+  it('names the cluster config kind in Vietnamese', async () => {
+    serve([disk({ kind: 'cluster', name: 'Singapore 01', tenantId: null })])
+    renderPage('vi')
+
+    const row = (await screen.findByText('Singapore 01')).closest('tr') as HTMLElement
+    expect(within(row).getByText('Cấu hình cụm')).toBeInTheDocument()
+  })
+
   it('names the kinds and BackupTooOld in Vietnamese too', async () => {
     serve([disk({ kind: 'volume', name: 'data-1', health: 'Stale', reason: 'BackupTooOld' })])
     renderPage('vi')
