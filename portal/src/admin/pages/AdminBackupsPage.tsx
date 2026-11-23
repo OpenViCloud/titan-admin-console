@@ -8,6 +8,7 @@ import {
   type BackupItem,
   type BackupTarget,
   type BackupTargetTestResult,
+  type RestoreDrill,
 } from '../hooks/useAdminBackups'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -69,6 +70,10 @@ export function AdminBackupsPage() {
           <BackupTable items={shown} />
         )}
 
+        {data !== undefined && data.restoreDrills !== undefined && data.restoreDrills.length > 0 && (
+          <RestoreDrillBlock drills={data.restoreDrills} />
+        )}
+
         <BackupTargetBlock />
 
         <section aria-labelledby="backups-restore" className="rounded-lg border border-border p-4 space-y-2">
@@ -116,6 +121,45 @@ function PostgresCards({ item }: { item: BackupItem }) {
       </section>
     </div>
   )
+}
+
+// titan-ops features/backup/design.md#restore-drill
+function RestoreDrillBlock({ drills }: { drills: RestoreDrill[] }) {
+  const t = useT()
+  return (
+    <section aria-labelledby="backups-restore-drill" className="rounded-lg border border-border p-4 space-y-3">
+      <h2 id="backups-restore-drill" className="text-sm font-medium text-foreground">{t.adminBackups.restoreDrillTitle}</h2>
+      <ul className="space-y-2">
+        {drills.map(d => (
+          <li key={d.clusterId} className="text-sm">
+            <span className="font-medium text-foreground">{d.clusterName}</span>
+            <RestoreDrillLine drill={d} />
+          </li>
+        ))}
+      </ul>
+      <p className="text-xs text-muted-foreground">{t.adminBackups.restoreDrillHint}</p>
+    </section>
+  )
+}
+
+function RestoreDrillLine({ drill }: { drill: RestoreDrill }) {
+  const t = useT()
+  const f = useFormat()
+  // The reason is the worker's own text and stays as sent, like the error text after "Failed:" below.
+  const what = drill.kind === null || drill.name === null ? null : `${t.adminBackups.kinds[drill.kind] ?? drill.kind} ${drill.name}`
+  if (drill.state === 'verified' && what !== null && drill.verifiedAt !== null) {
+    return <p className="text-muted-foreground">{t.adminBackups.restoreDrillVerified(what, f.dateTime(drill.verifiedAt))}</p>
+  }
+  if (drill.state === 'notVerified') {
+    return (
+      <div className="text-muted-foreground">
+        <p className="text-bad">{what === null ? t.adminBackups.restoreDrillFailedUnnamed : t.adminBackups.restoreDrillFailed(what)}</p>
+        {drill.reason !== null && <p className="font-mono text-xs break-words">{drill.reason}</p>}
+        <p>{drill.verifiedAt === null ? t.adminBackups.restoreDrillNeverVerified : t.adminBackups.restoreDrillLastVerified(f.dateTime(drill.verifiedAt))}</p>
+      </div>
+    )
+  }
+  return <p className="text-muted-foreground">{t.adminBackups.restoreDrillNone}</p>
 }
 
 function healthVariant(health: BackupHealth): 'success' | 'warning' | 'destructive' | 'gray' {

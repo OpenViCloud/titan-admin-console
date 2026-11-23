@@ -31,9 +31,15 @@ const disk = (o = {}) => ({
   ...o,
 })
 
-function serve(items: unknown[], savedTarget: unknown = target(), readAt: string | null = minutesAgo(1)) {
+const drill = (o = {}) => ({
+  clusterId: 'local', clusterName: 'Local', state: 'verified', verifiedAt: hoursAgo(2),
+  kind: 'vm', name: 'web-1', reason: null,
+  ...o,
+})
+
+function serve(items: unknown[], savedTarget: unknown = target(), readAt: string | null = minutesAgo(1), restoreDrills?: unknown[]) {
   server.use(
-    http.get('*/v1/admin/backups', () => HttpResponse.json({ readAt, items })),
+    http.get('*/v1/admin/backups', () => HttpResponse.json(restoreDrills === undefined ? { readAt, items } : { readAt, items, restoreDrills })),
     http.get('*/v1/tenants', () => HttpResponse.json([{ id: tenantA, name: 'Acme', status: 'Active' }])),
     http.get('*/v1/admin/backup-target', () =>
       savedTarget === null
@@ -309,5 +315,73 @@ describe('AdminBackupsPage', () => {
     await within(block).findByText('titan-backup-dev')
     expect(block).toHaveTextContent('khai ở cấu hình GitOps')
     expect(within(block).getByRole('button', { name: 'Thử kết nối' })).toBeInTheDocument()
+  })
+
+  // titan-ops features/backup/design.md#restore-drill: the page says when a restore last worked, of what, on which cluster.
+  describe('latest verified restore', () => {
+    it('names the cluster, what was restored and when', async () => {
+      serve([postgres()], target(), minutesAgo(1), [drill()])
+      renderPage()
+
+      const section = await screen.findByRole('region', { name: 'Latest verified restore' })
+      expect(within(section).getByText('Local')).toBeInTheDocument()
+      expect(within(section).getByText(/VM web-1 was restored from its backup on/)).toBeInTheDocument()
+    })
+
+    it('says not verified with the reason, and when one last worked', async () => {
+      serve([postgres()], target(), minutesAgo(1), [drill({
+        state: 'notVerified', kind: 'volume', name: 'data-1', verifiedAt: hoursAgo(30), reason: 'import volume vol1: disk full',
+      })])
+      renderPage()
+
+      const section = await screen.findByRole('region', { name: 'Latest verified restore' })
+      expect(within(section).getByText(/The latest restore drill failed \(Volume data-1\)/)).toBeInTheDocument()
+      expect(within(section).getByText('import volume vol1: disk full')).toBeInTheDocument()
+      expect(within(section).getByText(/Last verified restore:/)).toBeInTheDocument()
+    })
+
+    it('says no restore was verified when the drill failed and none ever worked', async () => {
+      serve([postgres()], target(), minutesAgo(1), [drill({
+        state: 'notVerified', verifiedAt: null, reason: 'pool: not enough space',
+      })])
+      renderPage()
+
+      const section = await screen.findByRole('region', { name: 'Latest verified restore' })
+      expect(within(section).getByText('No restore has been verified in the last 30 days.')).toBeInTheDocument()
+      expect(within(section).getByText('pool: not enough space')).toBeInTheDocument()
+    })
+
+    it('says none when no drill ended yet', async () => {
+      serve([postgres()], target(), minutesAgo(1), [drill({ state: 'none', verifiedAt: null, kind: null, name: null })])
+      renderPage()
+
+      const section = await screen.findByRole('region', { name: 'Latest verified restore' })
+      expect(within(section).getByText('No restore drill has ended in the last 30 days.')).toBeInTheDocument()
+    })
+
+    it('has one line for each cluster', async () => {
+      serve([postgres()], target(), minutesAgo(1), [drill(), drill({ clusterId: 'sg', clusterName: 'Singapore', state: 'none', verifiedAt: null, kind: null, name: null })])
+      renderPage()
+
+      const section = await screen.findByRole('region', { name: 'Latest verified restore' })
+      expect(within(section).getByText('Local')).toBeInTheDocument()
+      expect(within(section).getByText('Singapore')).toBeInTheDocument()
+    })
+
+    it('is in Vietnamese when the language is', async () => {
+      serve([postgres()], target(), minutesAgo(1), [drill()])
+      renderPage('vi')
+
+      const section = await screen.findByRole('region', { name: 'Lần khôi phục đã xác minh gần nhất' })
+      expect(within(section).getByText(/web-1/)).toBeInTheDocument()
+    })
+
+    it('shows nothing when the control plane sends no drill field', async () => {
+      serve([postgres()])
+      renderPage()
+
+      await screen.findByRole('table', { name: 'Newest backup of each resource' })
+      expect(screen.queryByRole('region', { name: 'Latest verified restore' })).not.toBeInTheDocument()
+    })
   })
 })

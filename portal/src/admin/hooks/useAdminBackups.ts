@@ -16,9 +16,24 @@ export interface BackupItem {
   lastWalAt: string | null
 }
 
+// A cluster's latest restore drill (control plane RestoreDrillQueryResult). 'verified': the newest ended drill is Done.
+// 'notVerified': it failed, `reason` says why and `verifiedAt` is when one last worked (null if none did in 30 days).
+// 'none': no drill ended in the last 30 days. `kind` and `name` are null when there is nothing to name.
+export interface RestoreDrill {
+  clusterId: string
+  clusterName: string
+  state: 'verified' | 'notVerified' | 'none'
+  verifiedAt: string | null
+  kind: string | null
+  name: string | null
+  reason: string | null
+}
+
 export interface BackupsResult {
   readAt: string | null
   items: BackupItem[]
+  // Absent from a control plane older than the restore drill.
+  restoreDrills?: RestoreDrill[]
 }
 
 // The target is the environment's GitOps config, read-only here: no secret and no way to change it from the console.
