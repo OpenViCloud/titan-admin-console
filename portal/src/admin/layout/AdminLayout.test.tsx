@@ -32,6 +32,19 @@ describe('AdminLayout', () => {
     expect(screen.queryByText(/titan admin/i)).not.toBeInTheDocument()
   })
 
+  // titan-ops features/public-site/design.md#brand-icon
+  it('shows the OpenViCloud icon beside the brand in the top bar and in the phone menu', () => {
+    const { container } = renderAt()
+    const icons = container.querySelectorAll('img[src="/brand-mark.png"]')
+    expect(icons.length).toBe(2)
+    for (const icon of icons) {
+      expect(icon.getAttribute('alt')).toBe('')
+      const holder = icon.parentElement
+      expect(holder).not.toBeNull()
+      expect(holder === null ? '' : holder.textContent).toContain('OpenViCloud')
+    }
+  })
+
   it('groups every admin page under its section', () => {
     renderAt()
     const nav = screen.getByRole('navigation', { name: 'Main' })
