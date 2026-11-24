@@ -10,6 +10,8 @@ vi.mock('react-oidc-context', () => ({
 
 import { getConfig, setConfig, type AppConfig } from '@/lib/config'
 import { FixedLanguage } from '@/test/FixedLanguage'
+import { LanguageProvider } from '@/i18n/LanguageProvider'
+import { LANG_STORAGE_KEY } from '@/i18n/lang'
 import { AdminLayout } from './AdminLayout'
 
 function renderAt(path = '/') {
@@ -80,6 +82,27 @@ describe('AdminLayout', () => {
     await userEvent.click(screen.getByRole('button', { name: /account menu/i }))
     await userEvent.click(await screen.findByTestId('admin-logout'))
     expect(signoutRedirect).toHaveBeenCalled()
+  })
+
+  // titan-ops features/cloud-console/design.md#portal-language — the header shows the other language by its own name.
+  it('switches to Vietnamese and back from the header button, and remembers it', async () => {
+    render(
+      <LanguageProvider detectCountry={async () => null}>
+        <MemoryRouter initialEntries={['/clusters']}><AdminLayout /></MemoryRouter>
+      </LanguageProvider>,
+    )
+    const banner = screen.getByRole('banner')
+    const toVietnamese = within(banner).getByRole('button', { name: 'Tiếng Việt' })
+    expect(toVietnamese).toHaveAttribute('lang', 'vi')
+    await userEvent.click(toVietnamese)
+
+    expect(screen.getByRole('navigation', { name: 'Điều hướng chính' })).toBeInTheDocument()
+    expect(window.localStorage.getItem(LANG_STORAGE_KEY)).toBe('vi')
+    await userEvent.click(within(banner).getByRole('button', { name: 'English' }))
+    expect(screen.getByRole('navigation', { name: 'Main' })).toBeInTheDocument()
+    expect(window.localStorage.getItem(LANG_STORAGE_KEY)).toBe('en')
+    window.localStorage.clear()
+    document.documentElement.lang = 'en'
   })
 
   it('renders the navigation in Vietnamese, keeping the Admin brand suffix', async () => {
