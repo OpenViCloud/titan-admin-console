@@ -275,7 +275,7 @@ describe('AdminBackupsPage', () => {
     renderPage()
 
     const section = await screen.findByRole('region', { name: 'Restoring' })
-    expect(section).toHaveTextContent('runs outside this console')
+    expect(section).toHaveTextContent('A database restore runs outside this console')
     expect(section).toHaveTextContent('Disaster recovery runbook: titan-ops infra/oci/runbook.md#disaster-recovery')
     expect(within(section).queryAllByRole('link')).toEqual([])
   })
@@ -788,7 +788,8 @@ describe('AdminBackupsPage', () => {
       server.use(
         http.get('*/v1/admin/backups', () => {
           reads += 1
-          return HttpResponse.json({ readAt: minutesAgo(1), items: [restorableVm()] })
+          const archives = reads === 1 ? [newestArchive, olderArchive] : [olderArchive]
+          return HttpResponse.json({ readAt: minutesAgo(1), items: [restorableVm({ archives })] })
         }),
         http.post('*/v1/admin/backups/vms/:vmId/restore', () =>
           HttpResponse.json({ status: 404, title: 'Backup not found.', code: 'BACKUP_NOT_FOUND' }, { status: 404 })),
@@ -797,12 +798,18 @@ describe('AdminBackupsPage', () => {
       renderPage()
 
       const dialog = await openRestore(user, 'web-1')
-      const readsBefore = reads
+      expect(within(dialog).getAllByRole('radio')).toHaveLength(2)
       await user.click(within(dialog).getByRole('button', { name: 'Restore' }))
 
       const { toast } = await import('sonner')
       await waitFor(() => expect(toast.error).toHaveBeenCalled())
-      await waitFor(() => expect(reads).toBeGreaterThan(readsBefore))
+      await waitFor(() => expect(reads).toBeGreaterThan(1))
+      await user.click(within(dialog).getByRole('button', { name: 'Cancel' }))
+      await dialogIsGone()
+      const again = await openRestore(user, 'web-1')
+      const radios = within(again).getAllByRole('radio')
+      expect(radios).toHaveLength(1)
+      expect(radios[0]).toHaveAccessibleName(new RegExp(`^${when(olderArchive.takenAt)} · `))
     })
 
     it('names the attached volume that has no backup close enough, from the answer of the control plane', async () => {
