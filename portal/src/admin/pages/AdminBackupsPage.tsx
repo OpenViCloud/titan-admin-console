@@ -1,26 +1,40 @@
-import { useMemo, useState } from 'react'
+import { useId, useMemo, useState, type FormEvent } from 'react'
+import { toast } from 'sonner'
 import { useAdminTenants } from '../hooks/useAdminTenants'
 import {
   useAdminBackups,
   useBackupTarget,
+  useRestoreFromBackup,
   useTestBackupTarget,
+  type BackupArchive,
   type BackupHealth,
   type BackupItem,
+  type BackupRestore,
   type BackupTarget,
   type BackupTargetTestResult,
   type RestoreDrill,
 } from '../hooks/useAdminBackups'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog'
 import { useT, useFormat } from '@/i18n/LanguageContext'
 import type { Messages } from '@/i18n/en'
 import { ageOf } from '@/lib/age'
 import { formatBytes } from '@/lib/bytes'
 import { needsAttention, visibleItems } from '@/lib/backupFilter'
 
-// Where the restore steps live. The page only names them: restoring runs outside the console, and the runbook is in
-// titan-ops, which is private, so a link would be a 404 for anyone without access to it.
+// Where the steps to restore the database live. The page only names them: that restore runs outside the console (a VM
+// or a volume is restored from the table below), and the runbook is in titan-ops, which is private, so a link would be
+// a 404 for anyone without access to it.
 const RUNBOOK_REF = 'titan-ops infra/oci/runbook.md#disaster-recovery'
 
 // titan-ops features/backup/design.md#backups-page
@@ -28,6 +42,7 @@ export function AdminBackupsPage() {
   const t = useT()
   const { data, isLoading, isError } = useAdminBackups()
   const [onlyAttention, setOnlyAttention] = useState(false)
+  const [restoring, setRestoring] = useState<RestorableItem | null>(null)
 
   const items = data === undefined ? [] : data.items
   const needAttention = items.filter(needsAttention)
@@ -67,11 +82,15 @@ export function AdminBackupsPage() {
         {postgres !== undefined && <PostgresCards item={postgres} />}
 
         {data !== undefined && (
-          <BackupTable items={shown} />
+          <BackupTable items={shown} onRestore={setRestoring} />
         )}
 
         {data !== undefined && data.restoreDrills !== undefined && data.restoreDrills.length > 0 && (
           <RestoreDrillBlock drills={data.restoreDrills} />
+        )}
+
+        {data !== undefined && data.restores !== undefined && data.restores.length > 0 && (
+          <RecentRestoresBlock restores={data.restores} />
         )}
 
         <BackupTargetBlock />
@@ -84,6 +103,13 @@ export function AdminBackupsPage() {
           </p>
         </section>
       </div>
+
+      <RestoreDialog
+        item={restoring}
+        onClose={() => setRestoring(null)}
+        // An answer can come after the dialog was closed and opened for another resource: that one stays open.
+        onAsked={asked => setRestoring(current => (current === asked ? null : current))}
+      />
     </div>
   )
 }
@@ -162,6 +188,60 @@ function RestoreDrillLine({ drill }: { drill: RestoreDrill }) {
   return <p className="text-muted-foreground">{t.adminBackups.restoreDrillNone}</p>
 }
 
+// VM and volume rows belong to a tenant (titan-ops features/backup/design.md#incus-backup); Postgres is the platform's.
+function useTenantNames(): Map<string, string> {
+  const { data: tenants } = useAdminTenants()
+  return useMemo(() => {
+    const m = new Map<string, string>()
+    tenants?.forEach(tenant => m.set(tenant.id, tenant.name))
+    return m
+  }, [tenants])
+}
+
+function restoreStateVariant(state: BackupRestore['state']): 'blue' | 'success' | 'destructive' {
+  if (state === 'done') {
+    return 'success'
+  }
+  if (state === 'failed') {
+    return 'destructive'
+  }
+  return 'blue'
+}
+
+// titan-ops features/backup/design.md#restore-as-new-resource
+function RecentRestoresBlock({ restores }: { restores: BackupRestore[] }) {
+  const t = useT()
+  const f = useFormat()
+  const tenantName = useTenantNames()
+  return (
+    <section aria-labelledby="backups-recent-restores" className="rounded-lg border border-border p-4 space-y-3">
+      <h2 id="backups-recent-restores" className="text-sm font-medium text-foreground">{t.adminBackups.recentRestoresTitle}</h2>
+      <p className="text-xs text-muted-foreground">{t.adminBackups.recentRestoresHint}</p>
+      <ul className="space-y-2">
+        {restores.map(r => (
+          <li key={`${r.kind}|${r.resourceId}`} className="text-sm">
+            <p className="text-muted-foreground">
+              {t.adminBackups.kinds[r.kind] ?? r.kind}{' '}
+              <span className="font-mono text-xs text-foreground">{r.name ?? '—'}</span>
+              {' · '}
+              {r.tenantId === null ? '—' : (tenantName.get(r.tenantId) ?? r.tenantId)}
+              {' · '}
+              {t.adminBackups.recentRestoreFromBackup(r.takenAt === null ? '—' : f.dateTime(r.takenAt))}{' '}
+              {/* The state word is the server's own, in both languages, like the State column above. */}
+              <Badge variant={restoreStateVariant(r.state)}>{r.state}</Badge>{' '}
+              {t.adminBackups.recentRestoreAsked(f.dateTime(r.askedAt))}
+            </p>
+            {/* The reason is the worker's own text and stays as sent. */}
+            {r.state === 'failed' && r.reason !== null && (
+              <p className="font-mono text-xs text-muted-foreground break-words">{r.reason}</p>
+            )}
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}
+
 function healthVariant(health: BackupHealth): 'success' | 'warning' | 'destructive' | 'gray' {
   if (health === 'Ok') {
     return 'success'
@@ -175,16 +255,38 @@ function healthVariant(health: BackupHealth): 'success' | 'warning' | 'destructi
   return 'gray'
 }
 
-function BackupTable({ items }: { items: BackupItem[] }) {
+// What the Restore button needs of a row: a VM or a volume Titan knows by id, with an archive to restore from.
+interface RestorableItem {
+  kind: 'vm' | 'volume'
+  name: string
+  resourceId: string
+  archives: BackupArchive[]
+}
+
+// A control plane older than the Restore button sends neither `resourceId` nor `archives`: nothing is restorable.
+function restorable(item: BackupItem): RestorableItem | null {
+  if (item.kind !== 'vm' && item.kind !== 'volume') {
+    return null
+  }
+  if (item.resourceId === undefined || item.resourceId === null || item.archives === undefined || item.archives.length === 0) {
+    return null
+  }
+  return { kind: item.kind, name: item.name, resourceId: item.resourceId, archives: item.archives }
+}
+
+// Two volumes of one tenant can share a name, so the id tells the rows apart when the control plane sends one.
+function rowKey(item: BackupItem): string {
+  if (item.resourceId === undefined || item.resourceId === null) {
+    return `${item.kind}|${item.name}|${item.tenantId ?? ''}`
+  }
+  return `${item.kind}|${item.resourceId}`
+}
+
+function BackupTable({ items, onRestore }: { items: BackupItem[]; onRestore: (item: RestorableItem) => void }) {
   const t = useT()
   const f = useFormat()
-  // VM and volume rows belong to a tenant (titan-ops features/backup/design.md#incus-backup); Postgres is the platform's.
-  const { data: tenants } = useAdminTenants()
-  const tenantName = useMemo(() => {
-    const m = new Map<string, string>()
-    tenants?.forEach(tenant => m.set(tenant.id, tenant.name))
-    return m
-  }, [tenants])
+  const tenantName = useTenantNames()
+  const nameCellId = useId()
 
   if (items.length === 0) {
     return (
@@ -205,28 +307,180 @@ function BackupTable({ items }: { items: BackupItem[] }) {
             <TableHead>{t.adminBackups.takenAt}</TableHead>
             <TableHead>{t.adminBackups.size}</TableHead>
             <TableHead>{t.adminBackups.health}</TableHead>
+            <TableHead />
           </TableRow>
         </TableHeader>
         <TableBody>
-          {items.map(i => (
-            <TableRow key={`${i.kind}|${i.name}|${i.tenantId ?? ''}`}>
-              <TableCell className="font-mono text-xs">{i.name}</TableCell>
-              <TableCell data-column="tenant">{i.tenantId === null ? '—' : (tenantName.get(i.tenantId) ?? i.tenantId)}</TableCell>
-              <TableCell>{t.adminBackups.kinds[i.kind] ?? i.kind}</TableCell>
-              <TableCell>{i.takenAt === null ? '—' : f.dateTime(i.takenAt)}</TableCell>
-              <TableCell>{i.sizeBytes === null ? '—' : formatBytes(i.sizeBytes)}</TableCell>
-              <TableCell>
-                {/* The state word is the server's own, in both languages, like every other status in the console. */}
-                <Badge variant={healthVariant(i.health)}>{i.health}</Badge>
-                {i.reason !== null && (
-                  <span className="ml-2 text-xs text-muted-foreground">{t.adminBackups.reasons[i.reason] ?? i.reason}</span>
-                )}
-              </TableCell>
-            </TableRow>
-          ))}
+          {items.map((i, index) => {
+            const toRestore = restorable(i)
+            return (
+              <TableRow key={rowKey(i)}>
+                <TableCell id={`${nameCellId}-${index}`} className="font-mono text-xs">{i.name}</TableCell>
+                <TableCell data-column="tenant">{i.tenantId === null ? '—' : (tenantName.get(i.tenantId) ?? i.tenantId)}</TableCell>
+                <TableCell>{t.adminBackups.kinds[i.kind] ?? i.kind}</TableCell>
+                <TableCell>{i.takenAt === null ? '—' : f.dateTime(i.takenAt)}</TableCell>
+                <TableCell>{i.sizeBytes === null ? '—' : formatBytes(i.sizeBytes)}</TableCell>
+                <TableCell>
+                  {/* The state word is the server's own, in both languages, like every other status in the console. */}
+                  <Badge variant={healthVariant(i.health)}>{i.health}</Badge>
+                  {i.reason !== null && (
+                    <span className="ml-2 text-xs text-muted-foreground">{t.adminBackups.reasons[i.reason] ?? i.reason}</span>
+                  )}
+                </TableCell>
+                <TableCell className="text-right">
+                  {toRestore !== null && (
+                    // Every row's button reads the same, so the resource's name is its description.
+                    <Button size="sm" variant="outline" aria-describedby={`${nameCellId}-${index}`} onClick={() => onRestore(toRestore)}>
+                      {t.adminBackups.restoreAction}
+                    </Button>
+                  )}
+                </TableCell>
+              </TableRow>
+            )
+          })}
         </TableBody>
       </Table>
     </div>
+  )
+}
+
+const VM_NAME = /^[a-zA-Z0-9][a-zA-Z0-9-]*$/
+const VM_NAME_MAX = 64
+const VOLUME_NAME_MAX = 100
+const RESTORED_SUFFIX = '-restored'
+
+// The suggestion is the original's name cut to leave room for the suffix, so it has the shape the control plane takes
+// (the tenant may still have a VM of that name).
+function suggestedName(item: RestorableItem): string {
+  const max = item.kind === 'vm' ? VM_NAME_MAX : VOLUME_NAME_MAX
+  return `${item.name.slice(0, max - RESTORED_SUFFIX.length)}${RESTORED_SUFFIX}`
+}
+
+// The limits the control plane puts on the name of a new VM or volume; undefined when the name can be sent.
+function nameProblem(kind: 'vm' | 'volume', name: string, t: Messages): string | undefined {
+  if (name.trim() === '') {
+    return t.adminBackups.restoreNameRequired
+  }
+  if (kind === 'volume') {
+    return name.length > VOLUME_NAME_MAX ? t.adminBackups.restoreNameTooLong(VOLUME_NAME_MAX) : undefined
+  }
+  if (!VM_NAME.test(name)) {
+    return t.adminBackups.restoreVmNameInvalid
+  }
+  return name.length > VM_NAME_MAX ? t.adminBackups.restoreNameTooLong(VM_NAME_MAX) : undefined
+}
+
+// A refused restore is told apart by the error code. The title of the attached-volume refusal names the volume, so it
+// follows the sentence as the control plane sent it.
+function restoreErrorText(err: unknown, t: Messages): string {
+  const response = (err as { response?: { data?: ErrorBody } }).response
+  const body = response === undefined ? undefined : response.data
+  const code = body === undefined ? undefined : body.code
+  const words = code === undefined ? undefined : t.adminBackups.restoreErrors[code]
+  if (words === undefined) {
+    return errorMessage(err, t.adminBackups.restoreFailed)
+  }
+  if (code === 'BACKUP_OF_ATTACHED_VOLUME_NOT_FOUND' && body !== undefined && body.title !== undefined && body.title !== '') {
+    return `${words} ${body.title}`
+  }
+  return words
+}
+
+// titan-ops features/backup/design.md#restore-as-new-resource
+function RestoreDialog({
+  item, onClose, onAsked,
+}: { item: RestorableItem | null; onClose: () => void; onAsked: (item: RestorableItem) => void }) {
+  const t = useT()
+  const f = useFormat()
+  const restore = useRestoreFromBackup()
+  const fieldId = useId()
+  const [backupKey, setBackupKey] = useState('')
+  const [name, setName] = useState('')
+
+  // The newest backup and the suggested name each time the dialog opens, whatever was chosen for another resource.
+  const openedFor = item === null ? undefined : `${item.kind}|${item.resourceId}`
+  const [seededFor, setSeededFor] = useState<string | undefined>(undefined)
+  if (openedFor !== seededFor) {
+    setSeededFor(openedFor)
+    setBackupKey(item === null ? '' : item.archives[0].backupKey)
+    setName(item === null ? '' : suggestedName(item))
+  }
+
+  const isVm = item !== null && item.kind === 'vm'
+  const nameError = item === null ? undefined : nameProblem(item.kind, name, t)
+
+  function submit(event: FormEvent) {
+    event.preventDefault()
+    if (item === null || nameError !== undefined || restore.isPending) {
+      return
+    }
+    restore.mutate(
+      { kind: item.kind, resourceId: item.resourceId, backupKey, name },
+      {
+        onSuccess: () => {
+          toast.success(t.adminBackups.restoreAsked)
+          onAsked(item)
+        },
+        onError: err => {
+          toast.error(restoreErrorText(err, t))
+        },
+      },
+    )
+  }
+
+  return (
+    <Dialog open={item !== null} onOpenChange={open => !open && onClose()}>
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{item === null ? '' : t.adminBackups.restoreDialogTitle(item.name)}</DialogTitle>
+          <DialogDescription>
+            {item === null ? '' : (isVm ? t.adminBackups.restoreVmDescription : t.adminBackups.restoreVolumeDescription)}
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={submit} className="space-y-4">
+          {isVm && <p className="text-[13px] text-muted-foreground">{t.adminBackups.restoreVmNotes}</p>}
+          <fieldset className="space-y-1.5">
+            <legend className="mb-1.5 text-sm text-soft-foreground">{t.adminBackups.restoreArchiveLegend}</legend>
+            {item !== null && item.archives.map(archive => (
+              <label key={archive.backupKey} className="flex items-center gap-2 text-sm text-foreground">
+                <input
+                  type="radio"
+                  name={`${fieldId}-archive`}
+                  value={archive.backupKey}
+                  checked={backupKey === archive.backupKey}
+                  onChange={() => setBackupKey(archive.backupKey)}
+                  className="accent-primary"
+                />
+                <span>
+                  {f.dateTime(archive.takenAt)}
+                  {archive.sizeBytes !== null && ` · ${formatBytes(archive.sizeBytes)}`}
+                </span>
+              </label>
+            ))}
+          </fieldset>
+          {/* The Input's error text has no id to describe the field with: a live region reads it out when it shows. */}
+          <div className="space-y-1" aria-live="polite">
+            <label htmlFor={`${fieldId}-name`} className="text-sm text-soft-foreground">
+              {isVm ? t.adminBackups.restoreVmNameLabel : t.adminBackups.restoreVolumeNameLabel}
+            </label>
+            <Input
+              id={`${fieldId}-name`}
+              value={name}
+              onChange={e => setName(e.target.value)}
+              error={nameError}
+              aria-invalid={nameError !== undefined}
+              autoComplete="off"
+            />
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={onClose}>{t.common.cancel}</Button>
+            <Button type="submit" disabled={nameError !== undefined || restore.isPending}>
+              {restore.isPending ? t.adminBackups.restoring : t.adminBackups.restoreAction}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   )
 }
 
