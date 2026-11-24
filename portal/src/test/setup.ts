@@ -21,6 +21,7 @@ const CREATE_ROUTES = [
   /\/v1\/tenant\/volumes$/, /\/v1\/tenant\/vms\/[^/]+\/snapshots$/, /\/v1\/tenant\/volumes\/[^/]+\/snapshots$/,
   /\/v1\/tenant\/volumes\/[^/]+\/snapshots\/[^/]+\/restore$/, /\/v1\/tenant\/topups$/, /\/v1\/admin\/topups\/grant$/,
   /\/v1\/tenant\/ssh-keys$/, /\/v1\/tenant\/load-balancers$/,
+  /\/v1\/admin\/backups\/vms\/[^/]+\/restore$/, /\/v1\/admin\/backups\/volumes\/[^/]+\/restore$/,
 ]
 const createsWithoutKey: string[] = []
 server.events.on('request:start', ({ request }) => {

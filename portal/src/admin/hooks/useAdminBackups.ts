@@ -1,5 +1,6 @@
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
+import { useIdempotencyKey } from '@/lib/idempotency'
 
 // Shapes mirror BackupsQueryResult, BackupTargetQueryResult and BackupTargetTestResult (control plane;
 // titan-ops features/backup/design.md). The control plane sends null, not an absent field, for what does not apply.
@@ -14,6 +15,30 @@ export interface BackupItem {
   health: BackupHealth
   reason: string | null
   lastWalAt: string | null
+  // The Titan id of the VM or volume; null for Postgres and a cluster's config. Absent, like `archives`, from a
+  // control plane older than the Restore button.
+  resourceId?: string | null
+  // Every archive of the resource, newest first (titan-ops features/backup/design.md#restore-as-new-resource).
+  archives?: BackupArchive[]
+}
+
+export interface BackupArchive {
+  backupKey: string
+  takenAt: string
+  sizeBytes: number | null
+}
+
+// A restore asked from the Backups page. `resourceId` and `name` are the new resource's; `name` is null once that
+// resource is gone. `reason` is the worker's own text, set when `state` is 'failed'.
+export interface BackupRestore {
+  kind: 'vm' | 'volume'
+  resourceId: string
+  name: string | null
+  tenantId: string | null
+  takenAt: string | null
+  state: 'running' | 'done' | 'failed'
+  askedAt: string
+  reason: string | null
 }
 
 // A cluster's latest restore drill (control plane RestoreDrillQueryResult). 'verified': the newest ended drill is Done.
@@ -34,6 +59,8 @@ export interface BackupsResult {
   items: BackupItem[]
   // Absent from a control plane older than the restore drill.
   restoreDrills?: RestoreDrill[]
+  // The restores asked in the last 30 days, newest first. Absent from a control plane older than the Restore button.
+  restores?: BackupRestore[]
 }
 
 // The target is the environment's GitOps config, read-only here: no secret and no way to change it from the console.
@@ -82,5 +109,32 @@ export function useBackupTarget() {
 export function useTestBackupTarget() {
   return useMutation({
     mutationFn: () => api.post<BackupTargetTestResult>('/v1/admin/backup-target/test').then(r => r.data),
+  })
+}
+
+export interface RestoreFromBackupInput {
+  kind: 'vm' | 'volume'
+  resourceId: string
+  backupKey: string
+  name: string
+}
+
+// The answer names only the new resource (titan-ops architecture/http-contract.md#create-returns-id); the page shows
+// the restore through the backups query, and the new VM is a row of the VM list.
+export type RestoreFromBackupResult = { newVmId: string } | { newVolumeId: string }
+
+// titan-ops features/backup/design.md#restore-as-new-resource
+export function useRestoreFromBackup() {
+  const qc = useQueryClient()
+  const withKey = useIdempotencyKey() // titan-ops architecture/http-contract.md#idempotency-key: one key per submission
+  return useMutation({
+    mutationFn: ({ kind, resourceId, backupKey, name }: RestoreFromBackupInput) => {
+      const route = kind === 'vm' ? `/v1/admin/backups/vms/${resourceId}/restore` : `/v1/admin/backups/volumes/${resourceId}/restore`
+      return withKey(headers => api.post<RestoreFromBackupResult>(route, { backupKey, name }, { headers }).then(r => r.data))
+    },
+    onSuccess: () => Promise.all([
+      qc.invalidateQueries({ queryKey: ['admin', 'backups'] }),
+      qc.invalidateQueries({ queryKey: ['admin', 'vms'] }),
+    ]),
   })
 }
