@@ -270,7 +270,7 @@ describe('AdminBackupsPage', () => {
     expect(screen.queryByText(/only shows and warns/)).not.toBeInTheDocument()
   })
 
-  it('reminds that restoring runs outside the console, naming the runbook without a link into private titan-ops', async () => {
+  it('reminds that restoring the database runs outside the console, naming the runbook without a link into private titan-ops', async () => {
     serve([postgres()])
     renderPage()
 
@@ -629,7 +629,7 @@ describe('AdminBackupsPage', () => {
 
       await user.type(name, 'web_1')
       expect(submit).toBeDisabled()
-      expect(within(dialog).getByText('Use only letters a–z, digits and hyphens, starting with a letter or a digit.')).toBeInTheDocument()
+      expect(within(dialog).getByText('Use only letters a–z or A–Z, digits and hyphens, starting with a letter or a digit.')).toBeInTheDocument()
 
       await user.clear(name)
       await user.type(name, '-web')
@@ -763,7 +763,7 @@ describe('AdminBackupsPage', () => {
     it.each([
       ['VM_NAME_TAKEN', 409, 'The tenant already has a VM with this name. Choose another name.'],
       ['BACKUP_NOT_FOUND', 404, 'This backup is no longer there. Close this dialog and open it again to see the backups there are now.'],
-      ['BACKUP_SOURCE_INVALID_STATE', 422, 'The original is in a state it cannot be restored from. Nothing was created.'],
+      ['BACKUP_SOURCE_INVALID_STATE', 422, 'The original, or for a VM a volume attached to it, is in a state it cannot be restored from. Nothing was created.'],
     ])('says %s in words, and the dialog stays open', async (code, status, words) => {
       serve([restorableVm()])
       server.use(http.post('*/v1/admin/backups/vms/:vmId/restore', () =>
@@ -780,6 +780,29 @@ describe('AdminBackupsPage', () => {
       expect(screen.getByRole('dialog')).toBeInTheDocument()
       expect(within(dialog).getByLabelText('Name of the new VM')).toHaveValue('web-1-restored')
       await waitFor(() => expect(within(dialog).getByRole('button', { name: 'Restore' })).toBeEnabled())
+    })
+
+    it('reads the backups again when the chosen backup is no longer there, so the dialog opened again lists the ones there are', async () => {
+      let reads = 0
+      serve([])
+      server.use(
+        http.get('*/v1/admin/backups', () => {
+          reads += 1
+          return HttpResponse.json({ readAt: minutesAgo(1), items: [restorableVm()] })
+        }),
+        http.post('*/v1/admin/backups/vms/:vmId/restore', () =>
+          HttpResponse.json({ status: 404, title: 'Backup not found.', code: 'BACKUP_NOT_FOUND' }, { status: 404 })),
+      )
+      const user = userEvent.setup()
+      renderPage()
+
+      const dialog = await openRestore(user, 'web-1')
+      const readsBefore = reads
+      await user.click(within(dialog).getByRole('button', { name: 'Restore' }))
+
+      const { toast } = await import('sonner')
+      await waitFor(() => expect(toast.error).toHaveBeenCalled())
+      await waitFor(() => expect(reads).toBeGreaterThan(readsBefore))
     })
 
     it('names the attached volume that has no backup close enough, from the answer of the control plane', async () => {
@@ -926,7 +949,7 @@ describe('AdminBackupsPage', () => {
       await user.clear(name)
       expect(within(dialog).getByText('Hãy nhập tên.')).toBeInTheDocument()
       await user.type(name, 'web_1')
-      expect(within(dialog).getByText('Chỉ dùng chữ cái a–z, chữ số và dấu gạch nối, bắt đầu bằng chữ cái hoặc chữ số.')).toBeInTheDocument()
+      expect(within(dialog).getByText('Chỉ dùng chữ cái a–z hoặc A–Z, chữ số và dấu gạch nối, bắt đầu bằng chữ cái hoặc chữ số.')).toBeInTheDocument()
       await user.clear(name)
       await user.type(name, 'web-1')
       await user.click(within(dialog).getByRole('button', { name: 'Khôi phục' }))

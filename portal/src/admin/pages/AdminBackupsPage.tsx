@@ -32,9 +32,9 @@ import { ageOf } from '@/lib/age'
 import { formatBytes } from '@/lib/bytes'
 import { needsAttention, visibleItems } from '@/lib/backupFilter'
 
-// Where the steps to restore the database or a whole cluster live. The page only names them: that restore runs outside
-// the console (a VM or a volume is restored from the table below), and the runbook is in titan-ops, which is private,
-// so a link would be a 404 for anyone without access to it.
+// Where the steps to restore the database live. The page only names them: that restore runs outside the console (a VM
+// or a volume is restored from the table below), and the runbook is in titan-ops, which is private, so a link would be
+// a 404 for anyone without access to it.
 const RUNBOOK_REF = 'titan-ops infra/oci/runbook.md#disaster-recovery'
 
 // titan-ops features/backup/design.md#backups-page
@@ -349,7 +349,8 @@ const VM_NAME_MAX = 64
 const VOLUME_NAME_MAX = 100
 const RESTORED_SUFFIX = '-restored'
 
-// The suggestion is the original's name cut to leave room for the suffix, so it is a name the control plane takes.
+// The suggestion is the original's name cut to leave room for the suffix, so it has the shape the control plane takes
+// (the tenant may still have a VM of that name).
 function suggestedName(item: RestorableItem): string {
   const max = item.kind === 'vm' ? VM_NAME_MAX : VOLUME_NAME_MAX
   return `${item.name.slice(0, max - RESTORED_SUFFIX.length)}${RESTORED_SUFFIX}`

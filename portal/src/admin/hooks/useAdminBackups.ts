@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { isAxiosError } from 'axios'
 import { api } from '@/lib/api'
 import { useIdempotencyKey } from '@/lib/idempotency'
 
@@ -18,7 +19,7 @@ export interface BackupItem {
   // The Titan id of the VM or volume; null for Postgres and a cluster's config. Absent, like `archives`, from a
   // control plane older than the Restore button.
   resourceId?: string | null
-  // Every archive of the resource, newest first (titan-ops features/backup/design.md#restore-as-new-resource).
+  // Every complete archive of the resource, newest first (titan-ops features/backup/design.md#restore-as-new-resource).
   archives?: BackupArchive[]
 }
 
@@ -28,8 +29,8 @@ export interface BackupArchive {
   sizeBytes: number | null
 }
 
-// A restore asked from the Backups page. `resourceId` and `name` are the new resource's; `name` is null once that
-// resource is gone. `reason` is the worker's own text, set when `state` is 'failed'.
+// A restore asked from the Backups page. `resourceId` and `name` are the new resource's; `name` is null when the
+// control plane finds no row for it. `reason` is the worker's own text, set when `state` is 'failed'.
 export interface BackupRestore {
   kind: 'vm' | 'volume'
   resourceId: string
@@ -136,5 +137,11 @@ export function useRestoreFromBackup() {
       qc.invalidateQueries({ queryKey: ['admin', 'backups'] }),
       qc.invalidateQueries({ queryKey: ['admin', 'vms'] }),
     ]),
+    // The dialog lists the archives of the cached backups query, which would offer the gone one again.
+    onError: (error: unknown) => {
+      if (isAxiosError(error) && (error.response?.data as { code?: string } | undefined)?.code === 'BACKUP_NOT_FOUND') {
+        return qc.invalidateQueries({ queryKey: ['admin', 'backups'] })
+      }
+    },
   })
 }
